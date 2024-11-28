@@ -9,9 +9,15 @@ from mysql.connector import connect, Error
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
+
         super(MainWindow, self).__init__()
         self.ui =Ui_MainWindow()
         self.ui.setupUi(self)
+
+        self.test_connection()
+
+        # Первым делом открываем страницу с авторами
+        self.open_page_of_authors()
 
         # Кнопка выхода из программы
         self.ui.button_exit.clicked.connect(self.close_app)
@@ -70,7 +76,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_journals.addItem("Номер")
 
 
-
+    # Ткстовое подключение к БД
     def test_connection(self):
         
         try:
@@ -83,6 +89,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             if connection.is_connected():
                 print("Успешное подключение")
+
+                # cursor = connection.cursor()
+
+                # cursor.execute("DROP TABLE authors")
+
+                # cursor.close()
+
+
         except Error as e:
             print("Ошибка подключения")
         finally:
