@@ -21,8 +21,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.button_open_page_articles.clicked.connect(self.open_page_of_articles)
         self.ui.button_open_page_journals.clicked.connect(self.open_page_of_journals)
 
-        # Вызов метода для добавления в ComboBox на страницк авторв
-        self.add_to_combo_box_authors()        
+        # Вызов метода для добавления элементов в ComboBox на страницк авторов
+        self.add_to_combo_box_authors()    
+
+        # Вызов метода для добавление элементов в ComboBox на странице статей    
+        self.add_to_combo_box_articles()
+
+        # Вызов метода для добавления элементов в ComboBox на странице журналов
+        self.add_to_combo_box_journals()
 
     # Метод для закрытия приложения
     def close_app(self):
@@ -38,12 +44,30 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
     
-    # Метод для добавления в ComboBox на страницк авторв
+    # Метод для добавления элементов в ComboBox на странице автор
     def add_to_combo_box_authors(self):
+
         self.ui.combo_box_authors.addItem("Имя")
         self.ui.combo_box_authors.addItem("Фамилия")
         self.ui.combo_box_authors.addItem("Отчество")
         self.ui.combo_box_authors.addItem("Дополнительная информация")
+
+    # Метод для добавления в ComboBox на странице статей
+    def add_to_combo_box_articles(self):
+        
+        self.ui.combo_box_articles.addItem("Имя автора")
+        self.ui.combo_box_articles.addItem("Фамилия автора")
+        self.ui.combo_box_articles.addItem("Отчество автора")
+        self.ui.combo_box_articles.addItem("Название статьи")
+        self.ui.combo_box_articles.addItem("Дата")
+        self.ui.combo_box_articles.addItem("Наука")
+        # self.ui.combo_box_articles.addItem("Текст статьи")
+
+    # Метод для добавления в ComboBox на странице журналов
+    def add_to_combo_box_journals(self):
+        self.ui.combo_box_journals.addItem("Название")
+        self.ui.combo_box_journals.addItem("Дата")
+        self.ui.combo_box_journals.addItem("Номер")
 
 
 
