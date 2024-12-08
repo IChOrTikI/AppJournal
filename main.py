@@ -87,7 +87,38 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         last_name = self.ui.author_last_name.text()
         middle_name = self.ui.author_middle_name.text()
         info_about_author = self.ui.author_additional_info.toPlainText()
+        
+        # Проверка сохранения данных
         # print(first_name, last_name, middle_name, info_about_author, end='\n')
+
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""INSERT INTO Authors (first_name, last_name, middle_name, info)
+                VALUES (%s, %s, %s, %s); """, (first_name, last_name, middle_name, info_about_author))
+
+                print("Пользователь добавлен")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+                
 
         self.ui.author_first_name.clear()
         self.ui.author_last_name.clear()
