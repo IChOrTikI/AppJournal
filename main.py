@@ -14,7 +14,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui =Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.test_connection_create_db()
+        #Создание БД
+        self.create_db()
+
+        # self.test_connection_create_db()
 
         # Первым делом открываем страницу с авторами
         self.open_page_of_authors()
@@ -35,6 +38,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Вызов метода для добавления элементов в ComboBox на странице журналов
         self.add_to_combo_box_journals()
+
+        # Подключение кнопки к функции
+        self.ui.button_add_author.clicked.connect(self.add_author_to_db)
 
     # Метод для закрытия приложения
     def close_app(self):
@@ -75,6 +81,107 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_journals.addItem("Дата")
         self.ui.combo_box_journals.addItem("Номер")
 
+    #Метод для добавления пользователя
+    def add_author_to_db(self):
+        first_name = self.ui.author_first_name.text()
+        last_name = self.ui.author_last_name.text()
+        middle_name = self.ui.author_middle_name.text()
+        info_about_author = self.ui.author_additional_info.toPlainText()
+        # print(first_name, last_name, middle_name, info_about_author, end='\n')
+
+        self.ui.author_first_name.clear()
+        self.ui.author_last_name.clear()
+        self.ui.author_middle_name.clear()
+        self.ui.author_additional_info.clear()
+        
+    #Метод для загрузки авторов из БД на страницу с авторами (метод принимает список авторов для отображения)    
+    def loading_authors_from_the_database_to_page(self, list_of_authors):
+        pass
+
+    #Создание БД
+    def create_db(self):
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Создание БД если её нет
+                # cursor.execute(""" CREATE DATABASE IF NOT EXISTS AppJournal; """)
+                
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS Authors (
+                        ID_Author INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        first_name VARCHAR(150) NOT NULL,
+                        last_name VARCHAR(150) NOT NULL,
+                        middle_name VARCHAR(150) NOT NULL,
+                        info TEXT NOT NULL,
+                        count_articles INT NOT NULL DEFAULT 0
+                    );
+                """)
+
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS Articles (
+                        ID_Article INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        date_create DATE NOT NULL,
+                        science VARCHAR(255) NOT NULL,
+                        text_article TEXT NOT NULL,
+                        isUse BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+                """)
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS Authors_Articles (
+                        ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        ID_Author INT,
+                        ID_Article INT UNIQUE,
+                        FOREIGN KEY (ID_Author) REFERENCES Authors(ID_Author) ON DELETE CASCADE,
+                        FOREIGN KEY (ID_Article) REFERENCES Articles(ID_Article) ON DELETE CASCADE
+                    );
+                """)
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS Journals (
+                        ID_Journal INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        date_create DATE NOT NULL,
+                        number_journal INT NOT NULL
+                    );
+                """)
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS Articles_Journals (
+                        ID INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        ID_Journal INT,
+                        ID_Article INT UNIQUE,
+                        FOREIGN KEY (ID_Journal) REFERENCES Journals(ID_Journal) ON DELETE CASCADE,
+                        FOREIGN KEY (ID_Article) REFERENCES Articles(ID_Article) ON DELETE CASCADE
+                    );
+                """)
+
+
+
+                
+
+                print("Таблицы успешно созданы.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
     # Ткстовое подключение к БД
     def test_connection_create_db(self):
