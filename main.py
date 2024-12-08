@@ -49,6 +49,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Методы для переключения окон
     def open_page_of_authors(self):
         self.ui.Main_widgets_pages.setCurrentIndex(0)
+        
+        # Получаем список всех авторов, так как не передаем параметры
+        list_of_authors = self.get_list_of_authors()
+
+        # Передаем список авторов для добавления авторов на окно
+        self.loading_authors_from_the_database_to_page(list_of_authors)
+
     
     def open_page_of_articles(self):
         self.ui.Main_widgets_pages.setCurrentIndex(2)
@@ -81,12 +88,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_journals.addItem("Дата")
         self.ui.combo_box_journals.addItem("Номер")
 
-    #Метод для добавления пользователя
+    # Метод для добавления авторов
     def add_author_to_db(self):
         first_name = self.ui.author_first_name.text()
         last_name = self.ui.author_last_name.text()
         middle_name = self.ui.author_middle_name.text()
         info_about_author = self.ui.author_additional_info.toPlainText()
+
+        # Добавление валидации данных
         
         # Проверка сохранения данных
         # print(first_name, last_name, middle_name, info_about_author, end='\n')
@@ -124,12 +133,94 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.author_last_name.clear()
         self.ui.author_middle_name.clear()
         self.ui.author_additional_info.clear()
-        
-    #Метод для загрузки авторов из БД на страницу с авторами (метод принимает список авторов для отображения)    
+  
+    # Метод для загрузки авторов из списка авторов на страницу с авторами (метод принимает список авторов для отображения)    
     def loading_authors_from_the_database_to_page(self, list_of_authors):
-        pass
+        self.ui.Widget_authors.clear()
 
-    #Создание БД
+        for author in list_of_authors:
+            item = QListWidgetItem()
+            item_widget = QWidget()
+            name_author = QLabel(str(author[1]) + " " + str(author[2]) + " " + str(author[3]))
+            separator_name = QLabel()
+            text_info = QLabel(str(author[4][:95]) + "... ")
+            separator_info = QLabel()
+
+            edit_push_button = QPushButton("Редактировать")
+            delete_push_button = QPushButton("Удалить")
+
+            edit_push_button.setObjectName(str(author[0])) # Именем кнопки для редактирования будет являться id пользователя
+            delete_push_button.setObjectName(str(author[0]))  # Именем кнопки для удаления будет являться id пользователя
+
+            edit_push_button.clicked.connect(self.edit_author_push_button)
+            delete_push_button.clicked.connect(self.delete_author_push_button)
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(name_author)
+            item_layout.addWidget(separator_name)
+            item_layout.addWidget(text_info)
+            item_layout.addWidget(separator_info)
+            item_layout.addWidget(edit_push_button)
+            item_layout.addWidget(delete_push_button)
+            item_widget.setLayout(item_layout)
+            item.setSizeHint(item_widget.sizeHint())
+            self.ui.Widget_authors.addItem(item)
+            self.ui.Widget_authors.setItemWidget(item, item_widget)
+
+
+    # Метод для получения списка авторов из БД по параметрам (если параметры не переадются то, поиск происход по всем авторам )    
+    def get_list_of_authors(self, param=None, value=None):
+        connection = None
+        cursor = None
+        authors = []
+
+        try:
+            connection = mysql.connector.connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774"  # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Формируем SQL-запрос в зависимости от наличия параметров фильтрации
+                if param and value:
+                    query = f"SELECT * FROM Authors WHERE {param} = %s;"
+                    cursor.execute(query, (value,))
+                else:
+                    cursor.execute("SELECT * FROM Authors;")
+
+                # Получаем все результаты при помощи fetchall
+                authors = cursor.fetchall()
+                print("Авторы получены.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return authors
+
+    # КНопки для взаимодействия с авторами на окне авторов
+    # Кнопка для редактирования (функция знает id автора)
+    def edit_author_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+        print(F"Кнопка редкатирования автора с ID{push_button.objectName()}")
+    
+    # Кнопка для удаления (функция знает id автора)
+    def delete_author_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+        print(F"Кнопка удаления автора с ID{push_button.objectName()}")
+   
+    # Создание БД
     def create_db(self):
         connection = None
         cursor = None
