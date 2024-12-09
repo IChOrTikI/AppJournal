@@ -448,7 +448,7 @@ class EditAuthorWindow(QtWidgets.QMainWindow, Ui_EditAuthorWindow):
         self.ui.edit_author_info.setPlainText(str(info[4]))
 
         # Подключаем кнопку для сохранения(изменения) информации
-        self.ui.putton_edit_author_save(self.save_changes_info_author)
+        self.ui.putton_edit_author_save.clicked.connect(self.save_changes_info_author)
 
         # Установление фиксированного размеа окна
         self.setFixedSize(500, 380)
@@ -486,7 +486,45 @@ class EditAuthorWindow(QtWidgets.QMainWindow, Ui_EditAuthorWindow):
         return authors
         
     def save_changes_info_author(self):
-        pass
+        try:
+            connection = mysql.connector.connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774"  # Имя базы данных
+            )   
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+                print(0)
+                # Получаем данные из полей
+                new_first_name = str(self.ui.edit_author_first_name.text())
+                new_last_name = str(self.ui.edit_author_last_name.text())
+                new_middle_name = str(self.ui.edit_author_middle_name.text())
+                new_info = str(self.ui.edit_author_info.toPlainText())
+                print(1)
+
+                # Запрос на обновление данных
+                query = """
+                    UPDATE Authors 
+                    SET first_name = %s, last_name = %s, middle_name = %s, info = %s 
+                    WHERE ID_Author = %s
+                """
+                data = (new_first_name, new_last_name, new_middle_name, new_info, self.author_id)
+
+                cursor.execute(query, data)
+                connection.commit()  # Сохраняем изменения в базе данных
+
+                print("Данные изменены.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
 class EditArticleWindow(QtWidgets.QMainWindow, Ui_EditArticleWindow):
     def __init__(self):
