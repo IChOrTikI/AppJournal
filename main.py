@@ -3,6 +3,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QListWidgetItem, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout
 
 from MainWindow import Ui_MainWindow
+from EditAuthorWindow import Ui_EditAuthorWindow
+from EditArticleWindow import Ui_EditArticleWindow
 
 import mysql.connector
 from mysql.connector import connect, Error
@@ -11,7 +13,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
 
         super(MainWindow, self).__init__()
-        self.ui =Ui_MainWindow()
+        self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
         #Создание БД
@@ -133,7 +135,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.author_last_name.clear()
         self.ui.author_middle_name.clear()
         self.ui.author_additional_info.clear()
-  
+
+        # После добавления автора обновляем список
+        # Получаем список всех авторов, так как не передаем параметры
+        list_of_authors = self.get_list_of_authors()
+
+        # Передаем список авторов для добавления авторов на окно
+        self.loading_authors_from_the_database_to_page(list_of_authors)
+
     # Метод для загрузки авторов из списка авторов на страницу с авторами (метод принимает список авторов для отображения)    
     def loading_authors_from_the_database_to_page(self, list_of_authors):
         self.ui.Widget_authors.clear()
@@ -166,7 +175,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item.setSizeHint(item_widget.sizeHint())
             self.ui.Widget_authors.addItem(item)
             self.ui.Widget_authors.setItemWidget(item, item_widget)
-
 
     # Метод для получения списка авторов из БД по параметрам (если параметры не переадются то, поиск происход по всем авторам )    
     def get_list_of_authors(self, param=None, value=None):
@@ -208,18 +216,59 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         return authors
 
     # КНопки для взаимодействия с авторами на окне авторов
-    # Кнопка для редактирования (функция знает id автора)
+    # Кнопка для редактирования (функция знает id автораM открывает окно для изменения данных)
     def edit_author_push_button(self):
         sender = self.sender()
         push_button = self.findChild(QPushButton, sender.objectName())
         print(F"Кнопка редкатирования автора с ID{push_button.objectName()}")
+
+        # Создаём новое окно для редактирования информации о авторе
+        self.edit_window = EditAuthorWindow(str(push_button.objectName()))
+        self.edit_window.show()
     
     # Кнопка для удаления (функция знает id автора)
     def delete_author_push_button(self):
         sender = self.sender()
         push_button = self.findChild(QPushButton, sender.objectName())
-        print(F"Кнопка удаления автора с ID{push_button.objectName()}")
-   
+  
+        # print(F"Кнопка удаления автора с ID{push_button.objectName()}")
+
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"DELETE FROM Authors WHERE ID_Author = %s;"
+                cursor.execute(query, (push_button.objectName(),))
+
+                print(f"Пользователь удалён. {push_button.objectName()}")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
+        
+        # После удаления автора обновляем список
+        # Получаем список всех авторов, так как не передаем параметры
+        list_of_authors = self.get_list_of_authors()
+
+        # Передаем список авторов для добавления авторов на окно
+        self.loading_authors_from_the_database_to_page(list_of_authors)
+
     # Создание БД
     def create_db(self):
         connection = None
@@ -381,10 +430,84 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if connection:
                 connection.close()
 
+class EditAuthorWindow(QtWidgets.QMainWindow, Ui_EditAuthorWindow):
+    def __init__(self, id_author):
+        super(EditAuthorWindow, self).__init__()
+        self.ui = Ui_EditAuthorWindow()
+        self.ui.setupUi(self)
+        self.author_id = id_author
+
+
+        # Вызываем метод для запроса данный о пользоватеде по id из БД 
+        info = self.get_info_about_author()
+
+        # Устанавливаем стартовые значениея текущих данных из БД
+        self.ui.edit_author_first_name.setText(str(info[1]))
+        self.ui.edit_author_last_name.setText(str(info[2]))
+        self.ui.edit_author_middle_name.setText(str(info[3]))
+        self.ui.edit_author_info.setPlainText(str(info[4]))
+
+        # Подключаем кнопку для сохранения(изменения) информации
+        self.ui.putton_edit_author_save(self.save_changes_info_author)
+
+        # Установление фиксированного размеа окна
+        self.setFixedSize(500, 380)
+    
+    # Метод для получения данных по текущем авторе
+    def get_info_about_author(self):
+        try:
+            connection = mysql.connector.connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774"  # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"SELECT * FROM Authors WHERE ID_Author = %s;"
+                cursor.execute(query, (self.author_id,))
+    
+
+                # Получаем все результаты при помощи fetchone
+                authors = cursor.fetchone()
+                print("Автор получен.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return authors
+        
+    def save_changes_info_author(self):
+        pass
+
+class EditArticleWindow(QtWidgets.QMainWindow, Ui_EditArticleWindow):
+    def __init__(self):
+        super(EditArticleWindow, self).__init__()
+        self.ui = Ui_EditArticleWindow()
+        self.ui.setupUi(self)
+
 if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.showFullScreen()
     sys.exit(app.exec_())
+
+    # app = QtWidgets.QApplication(sys.argv)
+    # window = EditAuthorWindow()
+    # window.show()
+    # sys.exit(app.exec_())
+
+    # app = QtWidgets.QApplication(sys.argv)
+    # window = EditArticleWindow()
+    # window.show()
+    # sys.exit(app.exec_())
 
