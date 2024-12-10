@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QMessageBox, QListWidgetItem, QVBoxLayout, QWidget, 
 from MainWindow import Ui_MainWindow
 from EditAuthorWindow import Ui_EditAuthorWindow
 from EditArticleWindow import Ui_EditArticleWindow
+from EditAuthorWidget import Ui_Form  
 
 import mysql.connector
 from mysql.connector import connect, Error
@@ -222,9 +223,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         push_button = self.findChild(QPushButton, sender.objectName())
         print(F"Кнопка редкатирования автора с ID{push_button.objectName()}")
 
-        # Создаём новое окно для редактирования информации о авторе
-        self.edit_window = EditAuthorWindow(str(push_button.objectName()))
-        self.edit_window.show()
+        # Создаём новое окно MainWindow для редактирования информации о авторе
+        # self.edit_window = EditAuthorWindow(str(push_button.objectName()))
+        # self.edit_window.show()
+        
+        # Создаём окно Widget для редактирования информации о авторе
+        # Передаем в окно себя и id автора
+        self.edit_author_widget = EditAuthorWidget(self, str(push_button.objectName()))
+        self.edit_author_widget.show()
     
     # Кнопка для удаления (функция знает id автора)
     def delete_author_push_button(self):
@@ -531,6 +537,125 @@ class EditArticleWindow(QtWidgets.QMainWindow, Ui_EditArticleWindow):
         super(EditArticleWindow, self).__init__()
         self.ui = Ui_EditArticleWindow()
         self.ui.setupUi(self)
+
+class EditAuthorWidget(QWidget, Ui_Form):
+    def __init__(self, main_window, id_author):
+        super().__init__()
+        self.ui = Ui_Form()  
+        self.ui.setupUi(self)  
+
+        self.main_window = main_window
+        self.id_author = id_author
+        
+        # Подключаем нопку
+        self.ui.putton_edit_author_save.clicked.connect(self.save_author_info)
+
+        # self.ui.edit_author_first_name.setText(str(self.id_author))
+
+        # Вызываем метод для запроса данный о пользоватеде по id из БД 
+        info = self.get_info_about_author()
+
+        # Устанавливаем стартовые значениея текущих данных из БД
+        self.ui.edit_author_first_name.setText(str(info[1]))
+        self.ui.edit_author_last_name.setText(str(info[2]))
+        self.ui.edit_author_middle_name.setText(str(info[3]))
+        self.ui.edit_author_info.setPlainText(str(info[4]))
+
+        # Подключаем кнопку к методу
+        # self.ui.someButton.clicked.connect(self.call_main_method)  # Замените 'someButton' на фактическое имя кнопки
+
+    # Метод для сохранения изменений и обновления данных в списке авторов
+    def save_author_info(self):
+
+        # # Получаем список всех авторов, так как не передаем параметры
+        # list_of_authors = self.get_list_of_authors()
+
+        # # Передаем список авторов для добавления авторов на окно
+        # self.loading_authors_from_the_database_to_page(list_of_authors)
+
+        # Метод для изменени данных об авторе
+        self.change_info_abot_author()
+
+        # Получаем список всех авторов, так как не передаем параметры
+        list_of_authors = self.main_window.get_list_of_authors()
+
+        # Передаем список авторов для добавления авторов на окно
+        self.main_window.loading_authors_from_the_database_to_page(list_of_authors)
+
+        self.close()
+    
+    # Метод для получения данных о автора по его id
+    def get_info_about_author(self):
+        try:
+            connection = mysql.connector.connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774"  # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"SELECT * FROM Authors WHERE ID_Author = %s;"
+                cursor.execute(query, (self.id_author,))
+    
+
+                # Получаем все результаты при помощи fetchone
+                authors = cursor.fetchone()
+                print("Автор получен.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return authors
+
+    # Метод для изменения данных автора в БД
+    def change_info_abot_author(self):
+        try:
+            connection = mysql.connector.connect(
+                host="sql12.freesqldatabase.com",
+                user="sql12749774",
+                password="kmYMIq9h6G",
+                database="sql12749774"  # Имя базы данных
+            )   
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Получаем данные из полей
+                new_first_name = str(self.ui.edit_author_first_name.text())
+                new_last_name = str(self.ui.edit_author_last_name.text())
+                new_middle_name = str(self.ui.edit_author_middle_name.text())
+                new_info = str(self.ui.edit_author_info.toPlainText())
+
+                # Запрос на обновление данных
+                query = """
+                    UPDATE Authors 
+                    SET first_name = %s, last_name = %s, middle_name = %s, info = %s 
+                    WHERE ID_Author = %s
+                """
+                data = (new_first_name, new_last_name, new_middle_name, new_info, self.id_author)
+
+                cursor.execute(query, data)
+                connection.commit()  # Сохраняем изменения в базе данных
+
+                print("Данные изменены.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
 
 if __name__ == "__main__":
 
