@@ -45,6 +45,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Подключение кнопки к функции
         self.ui.button_add_author.clicked.connect(self.add_author_to_db)
 
+        # Подключение кнопки для поиска авторов по параметрам
+        self.ui.button_search_authors_with_param.clicked.connect(self.search_authors_with_param)
+
     # Метод для закрытия приложения
     def close_app(self):
         self.close()
@@ -59,7 +62,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Передаем список авторов для добавления авторов на окно
         self.loading_authors_from_the_database_to_page(list_of_authors)
 
-    
     def open_page_of_articles(self):
         self.ui.Main_widgets_pages.setCurrentIndex(2)
     
@@ -196,7 +198,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 cursor = connection.cursor()
 
                 # Формируем SQL-запрос в зависимости от наличия параметров фильтрации
-                if param and value:
+                
+                if param == "info":
+                    query = f"SELECT * FROM Authors WHERE {param} LIKE %s;"
+                    cursor.execute(query, (f'%{value}%',))  # Добавляем символы подстановки
+                elif param and value:
                     query = f"SELECT * FROM Authors WHERE {param} = %s;"
                     cursor.execute(query, (value,))
                 else:
@@ -232,7 +238,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.edit_author_widget = EditAuthorWidget(self, str(push_button.objectName()))
         self.edit_author_widget.show()
     
-    # Кнопка для удаления (функция знает id автора)
+    # Кнопка для удаления автора (функция знает id автора)
     def delete_author_push_button(self):
         sender = self.sender()
         push_button = self.findChild(QPushButton, sender.objectName())
@@ -274,6 +280,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Передаем список авторов для добавления авторов на окно
         self.loading_authors_from_the_database_to_page(list_of_authors)
+
+    def search_authors_with_param(self):
+        
+        # Получаем данные из параметров поиска
+        value_text = self.ui.line_edit_author_param.text()
+        value_param = self.ui.combo_box_authors.currentText()
+        
+        print(1)
+
+        if value_param == "Имя":
+            current_param = "first_name"
+        elif value_param == "Фамилия":
+            current_param = "last_name"
+        elif value_param == "Отчество":
+            current_param = "middle_name"
+        elif value_param == "Дополнительная информация":
+            current_param = "info"
+
+        
+        print(value_text)
+        print(value_param)
+
+        info = self.get_list_of_authors(current_param, value_text)
+
+        self.loading_authors_from_the_database_to_page(info)
 
     # Создание БД
     def create_db(self):
