@@ -1,6 +1,7 @@
 import sys
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QListWidgetItem, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout
+from PyQt5 import QtGui
 
 from MainWindow import Ui_MainWindow
 from EditAuthorWindow import Ui_EditAuthorWindow
@@ -42,11 +43,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Вызов метода для добавления элементов в ComboBox на странице журналов
         self.add_to_combo_box_journals()
 
-        # Подключение кнопки к функции
+        # Подключение кнопки к функции добавления авторов в БД
         self.ui.button_add_author.clicked.connect(self.add_author_to_db)
 
         # Подключение кнопки для поиска авторов по параметрам
         self.ui.button_search_authors_with_param.clicked.connect(self.search_authors_with_param)
+
+        # Подключение кнопки к функции добавления статьи в БД
+        self.ui.button_add_articles.clicked.connect(self.add_article_to_db)
+
+
 
     # Метод для закрытия приложения
     def close_app(self):
@@ -64,6 +70,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def open_page_of_articles(self):
         self.ui.Main_widgets_pages.setCurrentIndex(2)
+
+        # Вызываем функцю для заргрузки авторов в поля для выбора автора сатьи при добавлении статьи
+        self.load_authors_to_combo_box_article()
     
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
@@ -75,6 +84,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_authors.addItem("Фамилия")
         self.ui.combo_box_authors.addItem("Отчество")
         self.ui.combo_box_authors.addItem("Дополнительная информация")
+        self.ui.combo_box_authors.addItem("Сброс параметров")
 
     # Метод для добавления в ComboBox на странице статей
     def add_to_combo_box_articles(self):
@@ -85,6 +95,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_articles.addItem("Название статьи")
         self.ui.combo_box_articles.addItem("Дата")
         self.ui.combo_box_articles.addItem("Наука")
+        self.ui.combo_box_articles.addItem("Сброс параметров")
         # self.ui.combo_box_articles.addItem("Текст статьи")
 
     # Метод для добавления в ComboBox на странице журналов
@@ -297,14 +308,57 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             current_param = "middle_name"
         elif value_param == "Дополнительная информация":
             current_param = "info"
+        elif value_param == "Сброс параметров": # Если выбра элемент "Сброс параметров"
+            value_param = None
+            current_param = None
+            self.ui.line_edit_author_param.clear()
+            
 
         
-        print(value_text)
-        print(value_param)
+        # print(value_text)
+        # print(value_param)
+        # value_text = str(value_text).lower()
+        # print(value_text)
 
         info = self.get_list_of_authors(current_param, value_text)
-
         self.loading_authors_from_the_database_to_page(info)
+
+    # Метод добавление к БД
+    def add_article_to_db(self):
+        pass
+
+    # Метод загрузки авторов в combo box с авторами на странице статей
+    def load_authors_to_combo_box_article(self):
+
+        # Поолучаем список всех авторов из БД
+        all_authors = self.get_list_of_authors()
+        # print(all_authors)
+
+        # Массив для хранения информации авторов
+        arr_data_aithors = []
+
+        # Добавляем в массив данные
+        for author in all_authors:
+            data_author = []
+            name_author = str(author[1]) + " " + str(author[2])
+            id_author = str(author[0])
+            data_author.append(name_author)
+            data_author.append(id_author)
+            arr_data_aithors.append(data_author)
+        
+        # print(arr_data_aithors)
+
+        # Создание модели
+        model = QtGui.QStandardItemModel(0, 1)
+
+        for author in arr_data_aithors:
+            item = QtGui.QStandardItem(author[0]) # Устанавливаем данные для элемента
+            item.setData(author[1])  # Устанавливаем данные для элемента
+            model.appendRow(item)
+            
+        # Установка модели в QComboBox
+        self.ui.combo_box_authors_article.setModel(model)
+
 
     # Создание БД
     def create_db(self):
