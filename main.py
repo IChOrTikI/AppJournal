@@ -77,6 +77,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Установление маски для ввода даты создания статьи
         self.ui.line_edit_data_article.setInputMask('0000-00-00;_')
     
+        # Загрузка статей в widget с статьями
+        self.load_articles_from_db_to_page_articles()
+
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
     
@@ -334,11 +337,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 print("Успешное подключение")
                 cursor = connection.cursor()
 
-                print("id = ")
-                print(id_for_delete)
+                # print("id = ")
+                # print(id_for_delete)
                 for el in id_for_delete:
-                    id_article = el
-                    print(id_article)
+                    id_article = el # id статьи
+                    # print(id_article)
                     query = f"DELETE FROM Articles WHERE ID_Article = %s;"
                     cursor.execute(query, (id_article,))
 
@@ -648,7 +651,60 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Загрузка статей из БД на страницу статей
     def load_articles_from_db_to_page_articles(self):
-        pass
+        
+        # Вызываем метод для получения всех статей с их авторами
+        list_of_articles = self.get_all_articles_from_db()
+
+        # Выводим список с сатьями на экран
+        print(list_of_articles)
+
+
+    def get_all_articles_from_db(self):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""
+                SELECT
+                    Authors.ID_Author,
+                    Authors.first_name,
+                    Authors.last_name,
+                    Articles.ID_Article,
+                    Articles.name,
+                    Articles.date_create,
+                    Articles.science,
+                    Articles.text_article
+                FROM
+                    Articles
+                INNER JOIN
+                    Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                INNER JOIN
+                    Authors ON Authors_Articles.ID_Author = Authors.ID_Author;
+                """)
+                
+                items = cursor.fetchall()
+                # print(items)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return items
+
 
     # Проверка корректоности даты на странице статей 
     def validate_date(self, date_string):
