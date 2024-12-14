@@ -280,11 +280,83 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     
     # Кнопка для удаления автора (функция знает id автора)
     def delete_author_push_button(self):
+
         sender = self.sender()
         push_button = self.findChild(QPushButton, sender.objectName())
-  
-        # print(F"Кнопка удаления автора с ID{push_button.objectName()}")
 
+        # Получаем список id статей автора
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"SELECT ID_Article FROM Authors_Articles WHERE ID_Author = %s;"
+                cursor.execute(query, (push_button.objectName(),))
+                id_articles = cursor.fetchall()
+                print(id_articles)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        # print(id_articles)
+
+        id_for_delete = []
+        
+        for el in id_articles:
+            id_for_delete.append(el[0])
+
+        # print(id_for_delete)
+
+        # Удаление статей пользователя
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                print("id = ")
+                print(id_for_delete)
+                for el in id_for_delete:
+                    id_article = el
+                    print(id_article)
+                    query = f"DELETE FROM Articles WHERE ID_Article = %s;"
+                    cursor.execute(query, (id_article,))
+
+                print("Статьи удалены.")
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
+
+
+        # print(F"Кнопка удаления автора с ID{push_button.objectName()}")
+        
+        # Удаляем автора
         connection = None
         cursor = None
         try:
@@ -313,7 +385,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 connection.commit()
                 connection.close()
 
-        
         # После удаления автора обновляем список
         # Получаем список всех авторов, так как не передаем параметры
         list_of_authors = self.get_list_of_authors()
@@ -321,6 +392,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Передаем список авторов для добавления авторов на окно
         self.loading_authors_from_the_database_to_page(list_of_authors)
 
+    # Поиск автора по параметрам
     def search_authors_with_param(self):
         
         # Получаем данные из параметров поиска
