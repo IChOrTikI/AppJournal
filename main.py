@@ -435,6 +435,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.line_edit_scince_article.clear()
         self.ui.text_edit_text_article.clear()
 
+        # Связываем статью с выбранным пользователем
+        id_article = self.get_id_article_with_name_date_science_text(name_articel, data_articel, science_articel, text_article)
+        
+        self.connect_author_and_article_in_db(id_author_for_articel, id_article)
+
         # Проверка даных для статьи
         # print(id_author_for_articel)
         # print(name_articel)
@@ -506,6 +511,69 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         return author_id
     
+    # Получение id статьи по её данным
+    def get_id_article_with_name_date_science_text(self, name, date, science, text):
+        # Получаем id статьи по её данным
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""SELECT * FROM Articles WHERE name = %s AND date_create = %s AND science = %s AND text_article = %s""", (name, date, science, text))
+                articles = cursor.fetchone()
+                articles_id = articles[0]
+                # print(articles)
+                # print("Статья получена")
+
+                return articles_id
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+    
+    # Соединение автора со статьеё
+    def connect_author_and_article_in_db(self, id_author, id_article):
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""INSERT INTO Authors_Articles (ID_Author,  ID_Article) 
+                VALUES (%s, %s); """, (id_author, id_article))
+                print("Автор и Статья подключены")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
     # Загрузка статей из БД на страницу статей
     def load_articles_from_db_to_page_articles(self):
         pass
