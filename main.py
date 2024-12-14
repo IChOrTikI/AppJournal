@@ -73,6 +73,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Вызываем функцю для заргрузки авторов в поля для выбора автора сатьи при добавлении статьи
         self.load_authors_to_combo_box_article()
+
+        # Установление маски для ввода даты создания статьи
+        self.ui.line_edit_data_article.setInputMask('0000-00-00;_')
     
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
@@ -348,6 +351,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         info = self.get_list_of_authors(current_param, value_text)
         self.loading_authors_from_the_database_to_page(info)
+    
     # Метод добавление статьи в БД
     def add_article_to_db(self):
 
@@ -357,11 +361,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Из текстовой информации делаем массив с именем и фамилией
         arr_info_about_current_author = text.split()
 
-        # print(arr_info_about_current_author)
-        # print(arr_info_about_current_author[0])
-        # print(arr_info_about_current_author[1])
-        # print(arr_info_about_current_author[2])
-
         first_name = arr_info_about_current_author[0]
         last_name = arr_info_about_current_author[1]
         middle_name = arr_info_about_current_author[2]
@@ -370,16 +369,82 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         middle_name = str(middle_name)
 
         # Получение id автора
-        index = self.get_author_id_with_first_last_middle_name(first_name, last_name, middle_name)
+        id_author_for_articel = self.get_author_id_with_first_last_middle_name(first_name, last_name, middle_name)
 
-        # Проверка id автора
-        print(index)
+        # Получение данных из полей ввода для статьи
+        name_articel = self.ui.line_edit_name_article.text()
+        data_articel = self.ui.line_edit_data_article.text() 
+        science_articel = self.ui.line_edit_scince_article.text()
+        text_article = self.ui.text_edit_text_article.toPlainText()
+
+        # Валмдация данных
+        # Валидация даты
+        if not self.validate_date(data_articel):
+            QMessageBox.warning(self, "Ошибка", "Введите корректную дату в формате ГГГГ-ММ-ДД или РЕАЛЬНУЮ дату")
+            self.ui.line_edit_data_article.clear()  # Очищаем поле ввода
+            return
+        elif not name_articel:
+            QMessageBox.warning(self, "Ошибка", "Введите навзание статьи")
+            return
+        elif not science_articel:
+            QMessageBox.warning(self, "Ошибка", "Введите навзание науки")
+            return
+        elif not text_article:
+            QMessageBox.warning(self, "Ошибка", "Введите текст статьи")
+            return
+        elif len(name_articel) >= 255:
+            QMessageBox.warning(self, "Ошибка", "Введите навзание стать меньеше 255 символов")
+            return
+        elif len(science_articel) >= 255:
+            QMessageBox.warning(self, "Ошибка", "Введите навзание науки меньше 255 символов")
+            return
+        
+
+        # Добавляем статью в БД
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""INSERT INTO Articles (name, date_create, science, text_article)
+                VALUES (%s, %s, %s, %s); """, (name_articel, data_articel, science_articel, text_article))
+
+                print("Статья добавлена")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
+        # После добавления статьи очищаем поля ввода
+        self.ui.line_edit_name_article.clear()
+        self.ui.line_edit_data_article.clear()
+        self.ui.line_edit_scince_article.clear()
+        self.ui.text_edit_text_article.clear()
+
+        # Проверка даных для статьи
+        # print(id_author_for_articel)
+        # print(name_articel)
+        # print(data_articel)
+        # print(science_articel)
+        # print(text_article)
 
         # Проверка
         # print(arr_info_about_current_author) 
         # print(text)
-
-        # pass
 
     # Метод загрузки авторов в combo box с авторами на странице статей
     def load_authors_to_combo_box_article(self):
@@ -440,6 +505,47 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 connection.close()
 
         return author_id
+    
+    # Загрузка статей из БД на страницу статей
+    def load_articles_from_db_to_page_articles(self):
+        pass
+
+    # Проверка корректоности даты на странице статей 
+    def validate_date(self, date_string):
+        # Проверяем, что строка имеет длину 10 символов (формат ГГГГ-ММ-ДД)
+        if len(date_string) != 10:
+            return False
+
+        year = date_string[:4]
+        month = date_string[5:7]
+        day = date_string[8:]
+
+        # Проверка даты
+        # print(year)
+        # print(month)
+        # print(day)
+
+        # Проверка года
+        if int(year) >= 1000:
+            # print(1)
+            # Проверка месяца
+            if int(month) >= 1 and int(month) <= 12:
+                # Проверка дня
+                if int(day) >= 1 and int(day) <= 31:
+                    # Дополнительная проверка на количество дней в месяце
+                    if month in ['04', '06', '09', '11'] and int(day) == 31:
+                        return False  # Апрель, Июнь, Сентябрь, Ноябрь имеют максимум 30 дней
+                    if month == '02':
+                        # Проверка на високосный год
+                        if (int(year) % 4 == 0 and int(year) % 100 != 0) or (int(year) % 400 == 0):
+                            if int(day) > 29:
+                                return False
+                        else:
+                            if int(day) > 28:
+                                return False
+                    return True
+
+        return False
 
     # Создание БД
     def create_db(self):
