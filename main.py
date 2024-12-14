@@ -120,10 +120,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cursor = None
         try:
             connection = connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774" # Имя базы данных
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
             )
 
             if connection.is_connected():
@@ -197,11 +197,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         authors = []
 
         try:
-            connection = mysql.connector.connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774"  # Имя базы данных
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
             )
 
             if connection.is_connected():
@@ -260,10 +260,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cursor = None
         try:
             connection = connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774" # Имя базы данных
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
             )
 
             if connection.is_connected():
@@ -323,42 +323,43 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         info = self.get_list_of_authors(current_param, value_text)
         self.loading_authors_from_the_database_to_page(info)
 
-    # Метод добавление к БД
+    # Метод добавление статьи в БД
     def add_article_to_db(self):
-        pass
+
+        # Получаем выбранного автора
+        text = self.ui.combo_box_authors_article.currentText()
+
+        # Из текстовой информации делаем массив с именем и фамилией
+        arr_info_about_current_author = text.split()
+
+
+
+
+        # Проверка
+        # print(arr_info_about_current_author) 
+        # print(text)
+
+        # pass
 
     # Метод загрузки авторов в combo box с авторами на странице статей
     def load_authors_to_combo_box_article(self):
 
+        # Убираем старые элементы 
+        self.ui.combo_box_authors_article.clear()
+
         # Поолучаем список всех авторов из БД
         all_authors = self.get_list_of_authors()
-        # print(all_authors)
 
-        # Массив для хранения информации авторов
-        arr_data_aithors = []
+        arr_authors = []
 
-        # Добавляем в массив данные
         for author in all_authors:
-            data_author = []
-            name_author = str(author[1]) + " " + str(author[2])
-            id_author = str(author[0])
-            data_author.append(name_author)
-            data_author.append(id_author)
-            arr_data_aithors.append(data_author)
-        
-        # print(arr_data_aithors)
+            el_author = author[1] + " " + author[2] + " " + author[3]
+            arr_authors.append(el_author)
 
-        # Создание модели
-        model = QtGui.QStandardItemModel(0, 1)
+        self.ui.combo_box_authors_article.addItems(arr_authors)        
 
-        for author in arr_data_aithors:
-            item = QtGui.QStandardItem(author[0]) # Устанавливаем данные для элемента
-            item.setData(author[1])  # Устанавливаем данные для элемента
-            model.appendRow(item)
-            
-        # Установка модели в QComboBox
-        self.ui.combo_box_authors_article.setModel(model)
-
+        # print(all_authors)
+        # print(arr_authors)
 
     # Создание БД
     def create_db(self):
@@ -366,10 +367,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cursor = None
         try:
             connection = connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774" # Имя базы данных
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
             )
 
             if connection.is_connected():
@@ -430,10 +431,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         FOREIGN KEY (ID_Article) REFERENCES Articles(ID_Article) ON DELETE CASCADE
                     );
                 """)
-
-
-
-                
 
                 print("Таблицы успешно созданы.")
 
@@ -672,11 +669,11 @@ class EditAuthorWidget(QWidget, Ui_Form):
     # Метод для получения данных о автора по его id
     def get_info_about_author(self):
         try:
-            connection = mysql.connector.connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774"  # Имя базы данных
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
             )
 
             if connection.is_connected():
@@ -704,12 +701,12 @@ class EditAuthorWidget(QWidget, Ui_Form):
     # Метод для изменения данных автора в БД
     def change_info_abot_author(self):
         try:
-            connection = mysql.connector.connect(
-                host="sql12.freesqldatabase.com",
-                user="sql12749774",
-                password="kmYMIq9h6G",
-                database="sql12749774"  # Имя базы данных
-            )   
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
 
             if connection.is_connected():
                 print("Успешное подключение")
