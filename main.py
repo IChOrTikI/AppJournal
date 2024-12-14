@@ -111,7 +111,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         middle_name = self.ui.author_middle_name.text()
         info_about_author = self.ui.author_additional_info.toPlainText()
 
-        # Добавление валидации данных
+        # Проверка корректности данных, Валидация данных
+        errors = []
+
+        if not first_name:
+            errors.append('Необходимо указать имя автора.')
+        if not last_name:
+            errors.append('Необходимо указать фамилию автора.')
+        if not middle_name:
+            errors.append('Необходимо указать отчество автора.')
+        if not info_about_author:
+            errors.append('Необходимо ввести дополнительные данные об авторе.')
+
+        if len(first_name) < 2:
+            errors.append(f'Имя не может состоять из {len(first_name)} символа (символов).')
+        if len(last_name) < 2:
+            errors.append(f'Фамилия не может состоять из {len(last_name)} символа (символов).')
+        if len(middle_name) < 5:
+            errors.append(f'Отчество не может состоять из {len(middle_name)} символа (символов).')
+
+        # Если возникла ошибка
+        if errors:
+            message_box = QMessageBox()
+            message_box.setIcon(QMessageBox.Warning)
+            message_box.setWindowTitle("Ошибка")
+            message_box.setText("\n".join(errors))
+            message_box.exec_()
+            return
         
         # Проверка сохранения данных
         # print(first_name, last_name, middle_name, info_about_author, end='\n')
@@ -322,7 +348,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         info = self.get_list_of_authors(current_param, value_text)
         self.loading_authors_from_the_database_to_page(info)
-
     # Метод добавление статьи в БД
     def add_article_to_db(self):
 
@@ -332,8 +357,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Из текстовой информации делаем массив с именем и фамилией
         arr_info_about_current_author = text.split()
 
+        # print(arr_info_about_current_author)
+        # print(arr_info_about_current_author[0])
+        # print(arr_info_about_current_author[1])
+        # print(arr_info_about_current_author[2])
 
+        first_name = arr_info_about_current_author[0]
+        last_name = arr_info_about_current_author[1]
+        middle_name = arr_info_about_current_author[2]
+        first_name = str(first_name)
+        last_name = str(last_name)
+        middle_name = str(middle_name)
 
+        # Получение id автора
+        index = self.get_author_id_with_first_last_middle_name(first_name, last_name, middle_name)
+
+        # Проверка id автора
+        print(index)
 
         # Проверка
         # print(arr_info_about_current_author) 
@@ -355,11 +395,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         for author in all_authors:
             el_author = author[1] + " " + author[2] + " " + author[3]
             arr_authors.append(el_author)
-
+        
+        # Добавляем авторов в combobox
         self.ui.combo_box_authors_article.addItems(arr_authors)        
 
         # print(all_authors)
         # print(arr_authors)
+
+    # Получение автора по его ФИО
+    def get_author_id_with_first_last_middle_name(self, first, last, middle):
+        connection = None
+        cursor = None
+
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Формируем SQL-запрос по параметрам
+
+                query = f"SELECT * FROM Authors WHERE first_name = %s AND last_name = %s AND middle_name = %s"
+                cursor.execute(query, (first, last, middle),)
+
+                # Получаем все результаты при помощи fetchall
+                authors = cursor.fetchone()
+                
+                author_id = authors[0]
+
+                print("Автор получен.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return author_id
 
     # Создание БД
     def create_db(self):
