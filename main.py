@@ -60,7 +60,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.button_search_articles_with_param.clicked.connect(self.search_articles_with_param)
 
         # Подключение кнопки для доавбления журнала в БД
-        self.ui.push_button_add_journals(self.add_journal_to_db)
+        self.ui.push_button_add_journals.clicked.connect(self.add_journal_to_db)
 
 
 
@@ -96,6 +96,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
+
+        # Установление маски для ввода даты создания статьи
+        self.ui.line_edit_journals_data.setInputMask('0000-00-00;_')
+
+        # Получаем список статей который не испольузются
+        list_of_articles_no_use = self.loading_all_articles_with_not_use()
+
+        # Добавляем статьи в list widget no use
+        self.insert_articles_to_widget_no_use(list_of_articles_no_use)
     
     # Метод для добавления элементов в ComboBox на странице автор
     def add_to_combo_box_authors(self):
@@ -1060,7 +1069,219 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 #////////////////////////////////////////
 
+    # Метод для добавления журнала
+    def add_journal_to_db(self):
+
+        # Получаем значения из полей
+        name_journal = self.ui.line_edit_journals_name.text()
+        date_journal = self.ui.line_edit_journals_data.text()
+        number_journal = self.ui.line_edit_journals_number.text()
+
+        # Валидация
+        if not self.validate_date(date_journal):
+            QMessageBox.warning(self, "Ошибка", "Введите корректную дату в формате ГГГГ-ММ-ДД или РЕАЛЬНУЮ дату")
+            self.ui.line_edit_journals_data.clear()  # Очищаем поле ввода
+            return
+        elif len(name_journal) >= 255:
+            QMessageBox.warning(self, "Ошибка", "Введите название журнала поменьше")
+            return
+        elif not name_journal:
+            QMessageBox.warning(self, "Ошибка", "Введите название журнала")
+            return
+        elif not number_journal.isdigit():
+            QMessageBox.warning(self, "Ошибка", "Номер журнала должен быть числом")
+            return
+        elif int(number_journal) >= 2147483647:
+            QMessageBox.warning(self, "Ошибка", "Введите число поменьше")
+            return
+
+
+
+        # Получаем количество элементов в QListWidget
+        item_count = self.ui.list_wodget_no_use_articles.count()
+        # Проходим по всем элементам
+        for index in range(item_count):
+            item = self.ui.list_wodget_no_use_articles.item(index)  # Получаем элемент по индексу
+            if item is not None:
+                article_name = item.text()  # Получаем текст элемента
+                print(article_name)  # Выводим имя статьи
+
+
+
+        # Получаем количество элементов в QListWidget
+        item_count = self.ui.list_wodget_use_articles.count()
+        # Проходим по всем элементам
+        for index in range(item_count):
+            item = self.ui.list_wodget_use_articles.item(index)  # Получаем элемент по индексу
+            if item is not None:
+                article_name = item.text()  # Получаем текст элемента
+                print(article_name)  # Выводим имя статьи
+        
+
+    # Получаем все статьи которые ещё не исопльзуются 
+    def loading_all_articles_with_not_use(self):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""
+                SELECT ID_Article, name FROM Articles WHERE isUse = 0;
+                """)
+                list_of_articles_no_use = cursor.fetchall()
+                # print(items)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return list_of_articles_no_use
+
+    def insert_articles_to_widget_no_use(self, list_articles):
+        # Очищаем list widget no use
+        self.ui.list_wodget_no_use_articles.clear()
+        self.ui.list_wodget_use_articles.clear()
+
+
+        # Добавляем элементы в list widget no use
+        for article in list_articles:
+            item = QListWidgetItem(str(article[1]))  # Устанавливаем текст элемента
+            item_widget = QWidget()
+            separator_name = QLabel()
+            name_article = QLabel(str(article[1]))
+
+            add_push_button = QPushButton("+")
+            add_push_button.setObjectName(str(article[0]))  # Именем кнопки для переноса элемента в другой list widget use
+
+            # Передаем текущий item в качестве аргумента в метод
+            add_push_button.clicked.connect(lambda checked, item=item: self.add_article_push_button(item))
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(name_article)
+            item_layout.addWidget(separator_name)
+            item_layout.addWidget(add_push_button)
+
+            item_widget.setLayout(item_layout)
+
+            item.setSizeHint(item_widget.sizeHint())
+            self.ui.list_wodget_no_use_articles.addItem(item)
+            self.ui.list_wodget_no_use_articles.setItemWidget(item, item_widget)
+
+    def add_article_push_button(self, item):
+        # Удаляем элемент из list widget no use
+        row = self.ui.list_wodget_no_use_articles.row(item)
+        if row != -1:
+            article_name = item.text()  # Получаем текст элемента
+            self.ui.list_wodget_no_use_articles.takeItem(row)
+
+            # Создаем новый элемент для второго списка
+            new_item = QListWidgetItem(article_name)  # Устанавливаем текст нового элемента
+            new_item_widget = QWidget()
+
+            remove_push_button = QPushButton("-")
+            remove_push_button.setObjectName(article_name)  # Именем кнопки для удаления элемента
+            separator_name = QLabel()
+            remove_push_button.clicked.connect(lambda checked, item=new_item: self.remove_article_push_button(item, article_name))
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(QLabel(article_name))  # Можно добавить название статьи
+            item_layout.addWidget(separator_name)
+            item_layout.addWidget(remove_push_button)
+
+            new_item_widget.setLayout(item_layout)
+
+            new_item.setSizeHint(new_item_widget.sizeHint())
+            self.ui.list_wodget_use_articles.addItem(new_item)
+            self.ui.list_wodget_use_articles.setItemWidget(new_item, new_item_widget)
+
+    def remove_article_push_button(self, item, article_name):
+        # Удаляем элемент из list widget use
+        row = self.ui.list_wodget_use_articles.row(item)
+        if row != -1:
+            self.ui.list_wodget_use_articles.takeItem(row)
+
+            # Создаем новый элемент для возвращения в первый список
+            return_item = QListWidgetItem(article_name)  # Устанавливаем текст возвращаемого элемента
+            return_widget = QWidget()
+
+            add_push_button = QPushButton("+")
+            add_push_button.setObjectName(article_name)  # Именем кнопки для переноса обратно
+            separator_name = QLabel()
+            add_push_button.clicked.connect(lambda checked, item=return_item: self.add_article_push_button(return_item))
+
+            return_layout = QHBoxLayout()
+            return_layout.addWidget(QLabel(article_name))  # Можно добавить название статьи
+            return_layout.addWidget(separator_name)
+            return_layout.addWidget(add_push_button)
+
+            return_widget.setLayout(return_layout)
+
+            return_item.setSizeHint(return_widget.sizeHint())
+            self.ui.list_wodget_no_use_articles.addItem(return_item)
+            self.ui.list_wodget_no_use_articles.setItemWidget(return_item, return_widget)
+
+    def add_journals_to_db(self, name, data, number):
+        pass
     
+    def get_all_journals_from_db(self):
+        pass
+
+    def loading_journasl_to_list_widget_page_journals(self, list_journals)
+        pass
+
+    # def insert_articles_to_widget_no_use(self, list_articles):
+
+    #     # Очищаем list widget no use
+    #     self.ui.list_wodget_no_use_articles.clear()
+
+
+    #     # Добавляем элементы в list widget no use
+    #     for article in list_articles:
+    #         item = QListWidgetItem()
+    #         item_widget = QWidget()
+    #         separator_name = QLabel()
+    #         name_article = QLabel(str(article[1]))
+
+    #         add_push_button = QPushButton("+")
+ 
+    #         add_push_button.setObjectName(str(article[0])) # Именем кнопки для перноса элемента в другой list widget use
+
+    #         # Передаем текущий item в качестве аргумента в метод
+    #         add_push_button.clicked.connect(lambda checked, item=item: self.add_article_push_button(item))
+
+    #         # add_push_button.clicked.connect(self.add_article_push_button)
+
+    #         item_layout = QHBoxLayout()
+    #         item_layout.addWidget(name_article)
+    #         item_layout.addWidget(separator_name)
+    #         item_layout.addWidget(add_push_button)
+
+    #         item_widget.setLayout(item_layout)
+
+    #         item.setSizeHint(item_widget.sizeHint())
+    #         self.ui.list_wodget_no_use_articles.addItem(item)
+    #         self.ui.list_wodget_no_use_articles.setItemWidget(item, item_widget)
+        
+    # def add_article_push_button(self, item):  
+    #     # Удаляем элемент из list widget no use
+    #     row = self.ui.list_wodget_no_use_articles.row(item)
+
+    #     if row != -1:
+    #         self.ui.list_wodget_no_use_articles.takeItem(row)
+
 
 
 
