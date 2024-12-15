@@ -852,7 +852,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             if int(day) > 28:
                                 return False
                     return True
-
         return False
 
     # Создание БД
@@ -1239,6 +1238,11 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
         self.ui = Ui_Form_Article()  
         self.ui.setupUi(self)  
 
+        # print(id_article)
+
+        # Установление маски для ввода даты создания статьи
+        self.ui.new_date_line_edit.setInputMask('0000-00-00;_')
+
         # Главное окно и id статьи
         self.main_window = main_window
         self.id_article = id_article
@@ -1251,48 +1255,194 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
 
         # Получаем id автора статьи
         self.id_author_article = info_about_article[0][0]
-        print(self.id_author_article)
+        # print(self.id_author_article)
 
         # Получаем всех авторов статей кроме текцщего
         all_authors = self.get_all_author()
 
         # Проверка получения данных
-        print(info_about_article)
+        # print(info_about_article)
+        print("All authors = ")
         print(all_authors)
 
         current_article = info_about_article[0]
 
         # Данный из БД устанавливаем в окно
-        self.ui.new_name_line_edit.setText(str(current_article[4]))
-        self.ui.new_date_line_edit.setText(str(current_article[5]))
-        self.ui.new_science_line_edit.setText(str(current_article[6]))
-        self.ui.new_text_edit.setText(str(current_article[4]))
+        self.ui.new_name_line_edit.setText(str(current_article[5]))
+        self.ui.new_date_line_edit.setText(str(current_article[6]))
+        self.ui.new_science_line_edit.setText(str(current_article[7]))
+        self.ui.new_text_edit.setText(str(current_article[8]))
 
         # Установление авторов в combo box
         # Устанавливаем первым текущего автора статьи
-        self.ui.new_author_combo_box.addItem(str(current_article[1]) + " " + str(current_article[2]))
+        self.ui.new_author_combo_box.addItem(str(current_article[1]) + " " + str(current_article[2]) + " " + str(current_article[3]))
         # Добавляем остальных авторов
         for el in all_authors:
-            self.ui.new_author_combo_box.addItem(str(el[1]) + " " + str(el[2]))
+            self.ui.new_author_combo_box.addItem(str(el[1]) + " " + str(el[2]) + " " + str(el[3]))
 
+    # Изменение информации о статье
+    def change_info_about_article(self):
+        new_name = self.ui.new_name_line_edit.text()
+        new_data = self.ui.new_date_line_edit.text()
+        new_science = self.ui.new_science_line_edit.text()
+        new_text = self.ui.new_text_edit.toPlainText()
+        new_name_author = self.ui.new_author_combo_box.currentText()
+        # print("Автор = ",new_name_author)
 
+        new_name_author = new_name_author.split()
+        # print("Авто = ", new_name_author)
 
-        # # self.ui.edit_author_first_name.setText(str(self.id_author))
+        new_name_author_first_name = new_name_author[0]
+        new_name_author_last_name = new_name_author[1]
+        new_name_author_middle_name = new_name_author[2]
 
-        # # Вызываем метод для запроса данный о пользоватеде по id из БД 
-        # info = self.get_info_about_author()
+        if not self.validate_date(new_data):
+            QMessageBox.warning(self, "Ошибка", "Введите корректную дату в формате ГГГГ-ММ-ДД или РЕАЛЬНУЮ дату")
+            self.ui.new_date_line_edit.clear()  # Очищаем поле ввода
+            return
+        elif not new_name:
+            QMessageBox.warning(self, "Ошибка", "Введите название статьи")
+            return
+        elif not new_science:
+            QMessageBox.warning(self, "Ошибка", "Введите название науки")
+            return
+        elif not new_text:
+            QMessageBox.warning(self, "Ошибка", "Введите название текст")
+            return
+        elif len(new_name) > 255:
+            QMessageBox.warning(self, "Ошибка", "Введите название статьи меньше")
+            return
+        elif len(new_science) > 255:
+            QMessageBox.warning(self, "Ошибка", "Введите название статьи меньше")
+            return
 
-        # # Устанавливаем стартовые значениея текущих данных из БД
-        # self.ui.edit_author_first_name.setText(str(info[1]))
-        # self.ui.edit_author_last_name.setText(str(info[2]))
-        # self.ui.edit_author_middle_name.setText(str(info[3]))
-        # self.ui.edit_author_info.setPlainText(str(info[4]))
-    
+        # Изменяем информацию о статье
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Формируем SQL-запрос по параметрам
+                query = f"UPDATE Articles SET name = %s, date_create = %s, science = %s, text_article = %s WHERE ID_Article = %s;"
+                cursor.execute(query, (new_name, new_data, new_science, new_text, self.id_article,))
+                print("Данные обнавлены")
+                connection.commit()
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+        
+
+        # Меняем связь между автором и статьёй
+        # Получаем нового автора по его имени и фамилии
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"SELECT ID_Author FROM Authors WHERE first_name = %s AND last_name = %s AND middle_name = %s;"
+                cursor.execute(query, (new_name_author_first_name, new_name_author_last_name, new_name_author_middle_name,))
+                id_new_author = cursor.fetchall()
+                # print("NEW ID AUTHRO = ")
+                # print(id_new_author)
+                print("Данные обнавлены")
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        print(f"ID article = {self.id_article}")
+        print(f"ID old author = {self.id_author_article}")
+        print(f"ID new author = {id_new_author[0][0]}")
+
+        self.change_connect_author_with_article(self.id_article, self.id_author_article, id_new_author[0][0])
+
+    # Обновление соедниения автора с статьей
+    def change_connect_author_with_article(self, id_article, old_id_author, new_id_author):
+
+        print("Param = ")
+        print(id_article)
+        print(old_id_author)
+        print(new_id_author)
+
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"DELETE FROM Authors_Articles WHERE ID_Article = %s;"
+                cursor.execute(query, (id_article,))
+
+                connection.commit()
+
+                query = f"INSERT INTO Authors_Articles (ID_Author, ID_Article) VALUES (%s, %s);"
+                cursor.execute(query, (new_id_author, id_article,))
+
+                connection.commit()
+
+                print("Данные обнавлены")
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()     
+
     def save_changes(self):
-        print(self.id_article)
+
+        self.change_info_about_article()
+
+        # Получение всех статей
+        list_articles = self.main_window.get_all_articles_from_db()
+
+        # Загрузка статей в widget с статьями
+        self.main_window.load_articles_from_db_to_page_articles(list_articles)
+
+        self.close()
+        
+        # print(self.id_article)
     
     # Получение информации о статье
     def get_info_about_article_with_id(self):
+        
+        # print("ID")
+        # print(self.id_article)
+
         onnection = None
         cursor = None
         try:
@@ -1312,6 +1462,7 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
                     Authors.ID_Author,
                     Authors.first_name,
                     Authors.last_name,
+                    Authors.middle_name,
                     Articles.ID_Article,
                     Articles.name,
                     Articles.date_create,
@@ -1322,8 +1473,10 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
                 INNER JOIN
                     Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
                 INNER JOIN
-                    Authors ON Authors_Articles.ID_Author = Authors.ID_Author;
-                """)
+                    Authors ON Authors_Articles.ID_Author = Authors.ID_Author
+                WHERE
+                    Articles.ID_Article = %s;
+                """, (self.id_article,))
                 
                 items = cursor.fetchall()
                 # print(items)
@@ -1371,6 +1524,43 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
         
         return items
 
+        # Проверка корректоности даты на странице статей 
+    
+    # Проверка корректности даты
+    def validate_date(self, date_string):
+        # Проверяем, что строка имеет длину 10 символов (формат ГГГГ-ММ-ДД)
+        if len(date_string) != 10:
+            return False
+
+        year = date_string[:4]
+        month = date_string[5:7]
+        day = date_string[8:]
+
+        # Проверка даты
+        # print(year)
+        # print(month)
+        # print(day)
+
+        # Проверка года
+        if int(year) >= 1000:
+            # print(1)
+            # Проверка месяца
+            if int(month) >= 1 and int(month) <= 12:
+                # Проверка дня
+                if int(day) >= 1 and int(day) <= 31:
+                    # Дополнительная проверка на количество дней в месяце
+                    if month in ['04', '06', '09', '11'] and int(day) == 31:
+                        return False  # Апрель, Июнь, Сентябрь, Ноябрь имеют максимум 30 дней
+                    if month == '02':
+                        # Проверка на високосный год
+                        if (int(year) % 4 == 0 and int(year) % 100 != 0) or (int(year) % 400 == 0):
+                            if int(day) > 29:
+                                return False
+                        else:
+                            if int(day) > 28:
+                                return False
+                    return True
+        return False
 
 
 
