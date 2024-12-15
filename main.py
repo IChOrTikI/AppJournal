@@ -7,6 +7,7 @@ from MainWindow import Ui_MainWindow
 from EditAuthorWindow import Ui_EditAuthorWindow
 from EditArticleWindow import Ui_EditArticleWindow
 from EditAuthorWidget import Ui_Form  
+from EditArticleWidget import Ui_Form_Article
 
 import mysql.connector
 from mysql.connector import connect, Error
@@ -720,12 +721,49 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         push_button = self.findChild(QPushButton, sender.objectName())
         print("Конпка редкатирования статьи с id : ", push_button.objectName())
 
+        # Создаём окно Widget для редактирования информации о статье
+        # Передаем в окно себя и id статьи
+        self.edit_article_widget = EditArticleWidget(self, str(push_button.objectName()))
+        self.edit_article_widget.show()
+
     
     # Метод для удаления статьи
     def delete_article_push_button(self):
         sender = self.sender()
         push_button = self.findChild(QPushButton, sender.objectName())
         print("Кнопка удаления статьи с id : ", push_button.objectName())
+
+        connection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""DELETE FROM Articles WHERE ID_Article = %s """, (push_button.objectName(),))
+                print("Статья удалена")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
+        # Получение всех стаетй
+        list_articles = self.get_all_articles_from_db()
+
+        # Загрузка статей в widget с статьями
+        self.load_articles_from_db_to_page_articles(list_articles)
 
     # Метод для просмотра статьи
     def view_article_push_button(self):
@@ -1194,6 +1232,142 @@ class EditAuthorWidget(QWidget, Ui_Form):
                 cursor.close()
             if connection:
                 connection.close()
+
+class EditArticleWidget(QWidget, Ui_Form_Article):
+    def __init__(self, main_window, id_article):
+        super().__init__()
+        self.ui = Ui_Form_Article()  
+        self.ui.setupUi(self)  
+
+        # Главное окно и id статьи
+        self.main_window = main_window
+        self.id_article = id_article
+        
+        # Подключаем нопку для сохранения изменений 
+        self.ui.push_button_save_changes_article_info.clicked.connect(self.save_changes)
+
+        # Получаем информацию и статье
+        info_about_article = self.get_info_about_article_with_id()
+
+        # Получаем id автора статьи
+        self.id_author_article = info_about_article[0][0]
+        print(self.id_author_article)
+
+        # Получаем всех авторов статей кроме текцщего
+        all_authors = self.get_all_author()
+
+        # Проверка получения данных
+        print(info_about_article)
+        print(all_authors)
+
+        current_article = info_about_article[0]
+
+        # Данный из БД устанавливаем в окно
+        self.ui.new_name_line_edit.setText(str(current_article[4]))
+        self.ui.new_date_line_edit.setText(str(current_article[5]))
+        self.ui.new_science_line_edit.setText(str(current_article[6]))
+        self.ui.new_text_edit.setText(str(current_article[4]))
+
+        # Установление авторов в combo box
+        # Устанавливаем первым текущего автора статьи
+        self.ui.new_author_combo_box.addItem(str(current_article[1]) + " " + str(current_article[2]))
+
+        # # self.ui.edit_author_first_name.setText(str(self.id_author))
+
+        # # Вызываем метод для запроса данный о пользоватеде по id из БД 
+        # info = self.get_info_about_author()
+
+        # # Устанавливаем стартовые значениея текущих данных из БД
+        # self.ui.edit_author_first_name.setText(str(info[1]))
+        # self.ui.edit_author_last_name.setText(str(info[2]))
+        # self.ui.edit_author_middle_name.setText(str(info[3]))
+        # self.ui.edit_author_info.setPlainText(str(info[4]))
+    
+    def save_changes(self):
+        print(self.id_article)
+    
+    # Получение информации о статье
+    def get_info_about_article_with_id(self):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""
+                SELECT
+                    Authors.ID_Author,
+                    Authors.first_name,
+                    Authors.last_name,
+                    Articles.ID_Article,
+                    Articles.name,
+                    Articles.date_create,
+                    Articles.science,
+                    Articles.text_article
+                FROM
+                    Articles
+                INNER JOIN
+                    Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                INNER JOIN
+                    Authors ON Authors_Articles.ID_Author = Authors.ID_Author;
+                """)
+                
+                items = cursor.fetchall()
+                # print(items)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return items
+
+    # Получение всех авторов
+    def get_all_author(self):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                cursor.execute("""
+                SELECT ID_Author, first_name, last_name, middle_name FROM Authors WHERE ID_Author <> %s;
+                """, (self.id_author_article,))
+                
+                items = cursor.fetchall()
+                # print(items)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return items
+
+
+
 
 if __name__ == "__main__":
 
