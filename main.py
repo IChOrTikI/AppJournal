@@ -53,6 +53,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Подключение кнопки к функции добавления статьи в БД
         self.ui.button_add_articles.clicked.connect(self.add_article_to_db)
 
+        # Подключение кнопки поиска по параметрам
+        self.ui.button_search_articles_with_param.clicked.connect(self.search_articles_with_param)
+
 
 
     # Метод для закрытия приложения
@@ -99,12 +102,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     # Метод для добавления в ComboBox на странице статей
     def add_to_combo_box_articles(self):
         
-        self.ui.combo_box_articles.addItem("Имя автора")
-        self.ui.combo_box_articles.addItem("Фамилия автора")
-        self.ui.combo_box_articles.addItem("Отчество автора")
+        # self.ui.combo_box_articles.addItem("Имя автора")
+        # self.ui.combo_box_articles.addItem("Фамилия автора")
+        # self.ui.combo_box_articles.addItem("Отчество автора")
         self.ui.combo_box_articles.addItem("Название статьи")
-        self.ui.combo_box_articles.addItem("Дата")
+        # self.ui.combo_box_articles.addItem("Дата")
         self.ui.combo_box_articles.addItem("Наука")
+        self.ui.combo_box_articles.addItem("Текст статьи")
         self.ui.combo_box_articles.addItem("Сброс параметров")
         # self.ui.combo_box_articles.addItem("Текст статьи")
 
@@ -432,6 +436,131 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         info = self.get_list_of_authors(current_param, value_text)
         self.loading_authors_from_the_database_to_page(info)
     
+#////////////////////
+
+    # Метод для поиска статей по параметрам
+    def search_articles_with_param(self):
+        
+        # Считываем значения из полей
+        param = self.ui.combo_box_articles.currentText()
+        value = self.ui.line_edit_articles_param.text()
+
+        if param == "Название статьи":
+            current_param = "name"
+        # elif param == "Дата":
+        #     current_param = "data_create"
+        elif param == "Наука":
+            current_param = "science"
+        elif param == "Текст статьи":
+            current_param = "text_article"
+        elif param == "Сброс параметров": # Если выбра элемент "Сброс параметров"
+            param = None
+            current_param = None
+            self.ui.line_edit_author_param.clear()
+
+        # Получение списка авторов при поиске с параметрос
+        list_of_articles_with_param = self.loading_articles_from_db_with_param(current_param, value)
+
+         # Загрузка статей в widget с статьями
+        self.load_articles_from_db_to_page_articles(list_of_articles_with_param)
+
+    # Загрузка данных о статьях из БД по парметрам
+    def loading_articles_from_db_with_param(self, param=None, value=None):
+        connection = None
+        cursor = None
+        authors = []
+
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                # Формируем SQL-запрос в зависимости от наличия параметров фильтрации
+
+
+                if param == "text_article":
+                    query = f"""
+                        SELECT
+                            Authors.ID_Author,
+                            Authors.first_name,
+                            Authors.last_name,
+                            Articles.ID_Article,
+                            Articles.name,
+                            Articles.date_create,
+                            Articles.science,
+                            Articles.text_article
+                        FROM
+                            Articles
+                        INNER JOIN
+                            Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                        INNER JOIN
+                            Authors ON Authors_Articles.ID_Author = Authors.ID_Author
+                        WHERE 
+                            Articles.{param} LIKE %s;
+                        """
+                    cursor.execute(query, (f'%{value}%',))  # Добавляем символы подстановки
+                elif param and value:
+                    query = f"""
+                        SELECT
+                            Authors.ID_Author,
+                            Authors.first_name,
+                            Authors.last_name,
+                            Articles.ID_Article,
+                            Articles.name,
+                            Articles.date_create,
+                            Articles.science,
+                            Articles.text_article
+                        FROM
+                            Articles
+                        INNER JOIN
+                            Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                        INNER JOIN
+                            Authors ON Authors_Articles.ID_Author = Authors.ID_Author
+                        WHERE 
+                            Articles.{param} = %s;
+                        """
+                    cursor.execute(query, (value,))
+                else:
+                    query = f"""
+                        SELECT
+                            Authors.ID_Author,
+                            Authors.first_name,
+                            Authors.last_name,
+                            Articles.ID_Article,
+                            Articles.name,
+                            Articles.date_create,
+                            Articles.science,
+                            Articles.text_article
+                        FROM
+                            Articles
+                        INNER JOIN
+                            Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                        INNER JOIN
+                            Authors ON Authors_Articles.ID_Author = Authors.ID_Author;
+                        """
+                    cursor.execute(query)
+
+                # Получаем все результаты при помощи fetchall
+                authors = cursor.fetchall()
+                print("Авторы получены.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+        return authors
+
     # Метод добавление статьи в БД
     def add_article_to_db(self):
 
@@ -726,7 +855,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.edit_article_widget = EditArticleWidget(self, str(push_button.objectName()))
         self.edit_article_widget.show()
 
-    
     # Метод для удаления статьи
     def delete_article_push_button(self):
         sender = self.sender()
