@@ -1271,6 +1271,11 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
         # Установление авторов в combo box
         # Устанавливаем первым текущего автора статьи
         self.ui.new_author_combo_box.addItem(str(current_article[1]) + " " + str(current_article[2]))
+        # Добавляем остальных авторов
+        for el in all_authors:
+            self.ui.new_author_combo_box.addItem(str(el[1]) + " " + str(el[2]))
+
+
 
         # # self.ui.edit_author_first_name.setText(str(self.id_author))
 
