@@ -1,7 +1,10 @@
 import sys
+import os
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QListWidgetItem, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout
 from PyQt5 import QtGui
+
+from docx import Document
 
 from MainWindow import Ui_MainWindow
 from EditAuthorWindow import Ui_EditAuthorWindow
@@ -55,6 +58,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Подключение кнопки поиска по параметрам
         self.ui.button_search_articles_with_param.clicked.connect(self.search_articles_with_param)
+
+        # Подключение кнопки для доавбления журнала в БД
+        self.ui.push_button_add_journals(self.add_journal_to_db)
+
 
 
 
@@ -899,6 +906,75 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         push_button = self.findChild(QPushButton, sender.objectName())
         print("Кнопка просмотра сатьи c id : ", push_button.objectName())
 
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = """
+                SELECT
+                    Authors.ID_Author,
+                    Authors.first_name,
+                    Authors.last_name,
+                    Articles.ID_Article,
+                    Articles.name,
+                    Articles.date_create,
+                    Articles.science,
+                    Articles.text_article
+                FROM
+                    Articles
+                INNER JOIN
+                    Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                INNER JOIN
+                    Authors ON Authors_Articles.ID_Author = Authors.ID_Author
+                WHERE
+                    Articles.ID_Article = %s;
+                """
+
+                cursor.execute(query, (push_button.objectName(),))
+                items = cursor.fetchone()
+                # print(items)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+
+        # Создаем новый документ
+        doc = Document()
+        doc.add_heading(f"{items[4]}")
+        doc.add_paragraph(f"Автор: {items[1]} {items[2]}")
+        doc.add_paragraph(f"Дата: {items[5]}")
+        doc.add_paragraph(f"Наука: {items[6]}")
+        doc.add_paragraph(f"{items[7]}")
+
+        # Получаем путь к директории, где находится текущий скрипт
+        project_path = os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
+
+        # Указываем имя файла .docx
+        file_name = f'article_{push_button.objectName()}.docx'  # Замените на имя вашего файла
+
+        # Полный путь к файлу
+        file_path = os.path.join(project_path, file_name)
+
+        # Сохраняем документ (перезаписывает, если файл уже существует)
+        doc.save(file_path)
+
+        # Открываем файл в Microsoft Word
+        os.startfile(file_path)
+
     # Получение всех статей из БД
     def get_all_articles_from_db(self):
         onnection = None
@@ -982,6 +1058,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     return True
         return False
 
+#////////////////////////////////////////
+
+    
+
+
+
+#///////////////////////////////////////
     # Создание БД
     def create_db(self):
         connection = None
