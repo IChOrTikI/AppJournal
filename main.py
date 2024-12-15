@@ -77,8 +77,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Установление маски для ввода даты создания статьи
         self.ui.line_edit_data_article.setInputMask('0000-00-00;_')
     
+        # Получение всех стаетй
+        list_articles = self.get_all_articles_from_db()
+
         # Загрузка статей в widget с статьями
-        self.load_articles_from_db_to_page_articles()
+        self.load_articles_from_db_to_page_articles(list_articles)
 
     def open_page_of_journals(self):
         self.ui.Main_widgets_pages.setCurrentIndex(1)
@@ -218,6 +221,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item_layout.addWidget(edit_push_button)
             item_layout.addWidget(delete_push_button)
             item_widget.setLayout(item_layout)
+
             item.setSizeHint(item_widget.sizeHint())
             self.ui.Widget_authors.addItem(item)
             self.ui.Widget_authors.setItemWidget(item, item_widget)
@@ -515,6 +519,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.connect_author_and_article_in_db(id_author_for_articel, id_article)
 
+        # Получение всех стаетй
+        list_articles = self.get_all_articles_from_db()
+
+        # Загрузка статей в widget с статьями
+        self.load_articles_from_db_to_page_articles(list_articles)
+
         # Проверка даных для статьи
         # print(id_author_for_articel)
         # print(name_articel)
@@ -650,15 +660,80 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 connection.close()
 
     # Загрузка статей из БД на страницу статей
-    def load_articles_from_db_to_page_articles(self):
+    def load_articles_from_db_to_page_articles(self, list_of_articles):
         
         # Вызываем метод для получения всех статей с их авторами
-        list_of_articles = self.get_all_articles_from_db()
+        # list_of_articles = self.get_all_articles_from_db()
 
         # Выводим список с сатьями на экран
         print(list_of_articles)
 
+        self.ui.list_widget_articles.clear()
 
+        for article in list_of_articles:
+            item = QListWidgetItem()
+            item_widget = QWidget()
+            name_author = QLabel(str(article[1]) + " " + str(article[2]))
+            name_article = QLabel(str(article[4]))
+            date_create_article = QLabel(str(article[5]))
+            science_of_article = QLabel(str(article[6]))
+            text_of_article = str(article[7])
+            if len(text_of_article) > 35:
+                text_of_article = QLabel(str(article[7][:35]) + "...")
+            else:
+                text_of_article = QLabel(str(article[7]))
+                
+
+            # separator_name = QLabel()
+
+            edit_push_button = QPushButton("Редактировать")
+            delete_push_button = QPushButton("Удалить")
+            view_push_button = QPushButton("Смотреть")
+
+            edit_push_button.setObjectName(str(article[3])) # Именем кнопки для редактирования будет являться id статьи
+            delete_push_button.setObjectName(str(article[3]))  # Именем кнопки для удаления будет являться id статьи
+            view_push_button.setObjectName(str(article[3])) # Именем кнопки для просмотра дубет являться id статьи
+
+            edit_push_button.clicked.connect(self.edit_article_push_button)
+            delete_push_button.clicked.connect(self.delete_article_push_button)
+            view_push_button.clicked.connect(self.view_article_push_button)
+
+            item_layout = QHBoxLayout()
+
+            item_layout.addWidget(name_author)
+            item_layout.addWidget(name_article)
+            item_layout.addWidget(date_create_article)
+            item_layout.addWidget(science_of_article)
+            item_layout.addWidget(text_of_article)
+            item_layout.addWidget(edit_push_button)
+            item_layout.addWidget(delete_push_button)
+            item_layout.addWidget(view_push_button)
+            item_widget.setLayout(item_layout)
+
+            item.setSizeHint(item_widget.sizeHint())
+            self.ui.list_widget_articles.addItem(item)
+            self.ui.list_widget_articles.setItemWidget(item, item_widget)
+
+    #  Метод для редактирования статьи
+    def edit_article_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+        print("Конпка редкатирования статьи с id : ", push_button.objectName())
+
+    
+    # Метод для удаления статьи
+    def delete_article_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+        print("Кнопка удаления статьи с id : ", push_button.objectName())
+
+    # Метод для просмотра статьи
+    def view_article_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+        print("Кнопка просмотра сатьи c id : ", push_button.objectName())
+
+    # Получение всех статей из БД
     def get_all_articles_from_db(self):
         onnection = None
         cursor = None
@@ -704,7 +779,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 connection.close()
         
         return items
-
 
     # Проверка корректоности даты на странице статей 
     def validate_date(self, date_string):
