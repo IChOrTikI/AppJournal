@@ -66,7 +66,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Поуключение кнопки для поиска журналов по параметрам
         self.ui.button_search_journals_with_param.clicked.connect(self.search_journals_with_param)
 
+        # Подключаем метод кодга меняются параметры для посика журнала
+        self.ui.combo_box_journals.currentIndexChanged.connect(self.set_mask_to_line_edit_value_param_journals)
 
+
+    #  Метод для замены маски ввода для парметров поиска журнала
+    def set_mask_to_line_edit_value_param_journals(self):
+        if self.ui.combo_box_journals.currentText() == "Дата":
+            self.ui.line_edit_value_param_journals.setInputMask('0000-00-00;_')
+        else:
+            self.ui.line_edit_value_param_journals.setInputMask('')
+            
     # Метод для закрытия приложения
     def close_app(self):
         self.close()
@@ -141,6 +151,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.combo_box_journals.addItem("Название")
         self.ui.combo_box_journals.addItem("Дата")
         self.ui.combo_box_journals.addItem("Номер")
+        self.ui.combo_box_journals.addItem("Сброс параметров")
 
     # Метод для добавления авторов
     def add_author_to_db(self):
@@ -1538,7 +1549,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     connection.close()
 
     def search_journals_with_param(self):
-        pass
+        
+        # Считываем данные из полей
+        param = self.ui.combo_box_journals.currentText()
+        value = self.ui.line_edit_value_param_journals.text()
+
+        if param == "Название":
+            current_param = "name"
+        elif param == "Дата":
+            if not self.validate_date(value):
+                QMessageBox.warning(self, "Ошибка", "Введите корректную дату в формате ГГГГ-ММ-ДД или РЕАЛЬНУЮ дату")
+                return
+            current_param = "date_create" 
+        elif param == "Номер":
+            current_param = "number_journal"
+        elif param == "Сброс параметров":
+            current_param = None
+            value = None
+
+        list_journals = self.get_all_journals_from_db(current_param, value)
+
+        self.loading_journasl_to_list_widget_page_journals(list_journals)
 
     def delete_journal_push_button(self):
         sender = self.sender()
@@ -1615,7 +1646,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def view_journal_push_button(self):
         pass
-
 
 #///////////////////////////////////////
     def create_report(self):
