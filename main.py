@@ -3,6 +3,7 @@ import os
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMessageBox, QListWidgetItem, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout
 from PyQt5 import QtGui
+from PyQt5.QtCore import QThread
 
 from docx import Document
 
@@ -61,8 +62,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Подключение кнопки для доавбления журнала в БД
         self.ui.push_button_add_journals.clicked.connect(self.add_journal_to_db)
-
-
+        
+        # Поуключение кнопки для поиска журналов по параметрам
+        self.ui.button_search_journals_with_param.clicked.connect(self.search_journals_with_param)
 
 
     # Метод для закрытия приложения
@@ -105,7 +107,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # Добавляем статьи в list widget no use
         self.insert_articles_to_widget_no_use(list_of_articles_no_use)
-    
+
+        # Получение всех журналов
+        all_journals = self.get_all_journals_from_db()
+
+        # Загрузка журналовв list_widget
+        self.loading_journasl_to_list_widget_page_journals(all_journals)
+
     # Метод для добавления элементов в ComboBox на странице автор
     def add_to_combo_box_authors(self):
 
@@ -1095,19 +1103,26 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             QMessageBox.warning(self, "Ошибка", "Введите число поменьше")
             return
 
+        self.add_journals_to_db(name_journal, date_journal, number_journal)
+
+        self.ui.line_edit_journals_name.clear()
+        self.ui.line_edit_journals_data.clear()
+        self.ui.line_edit_journals_number.clear()
 
 
-        # Получаем количество элементов в QListWidget
-        item_count = self.ui.list_wodget_no_use_articles.count()
-        # Проходим по всем элементам
-        for index in range(item_count):
-            item = self.ui.list_wodget_no_use_articles.item(index)  # Получаем элемент по индексу
-            if item is not None:
-                article_name = item.text()  # Получаем текст элемента
-                print(article_name)  # Выводим имя статьи
+        # Получение всех журналов
+        all_journals = self.get_all_journals_from_db()
 
+        # Загрузка журналовв list_widget
+        self.loading_journasl_to_list_widget_page_journals(all_journals)
 
+        # Получени id созданного журнала
+        id_journal = self.get_id_journal(name_journal, date_journal, number_journal)
+        id_journal = id_journal[0]
 
+        # Выбранные статьи
+        # print("Выбранные статьи : ")
+        list_name = []
         # Получаем количество элементов в QListWidget
         item_count = self.ui.list_wodget_use_articles.count()
         # Проходим по всем элементам
@@ -1115,8 +1130,59 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             item = self.ui.list_wodget_use_articles.item(index)  # Получаем элемент по индексу
             if item is not None:
                 article_name = item.text()  # Получаем текст элемента
-                print(article_name)  # Выводим имя статьи
+                list_name.append(article_name)
+                # print(article_name)  # Выводим имя статьи
+
+        # Получаем списко id статей для текущего журнала по именам статей
+        list_id_articles = self.get_id_articles(list_name)
+
+        # print("Информация:")
+        # print(id_journal)
+        # print(list_id_articles)
+
+        # Соединяем статьи с журналом
+        self.connect_article_with_journal(id_journal, list_id_articles)
+
+        # Меняем статус статей
+        self.change_status_articles(list_id_articles)
+
+        # Обновление данных
+
+        # Получение всех журналов
+        all_journals = self.get_all_journals_from_db()
+
+        # Загрузка журналов list_widget
+        self.loading_journasl_to_list_widget_page_journals(all_journals)
+
+        # # Получаем список статей который не испольузются
+        list_of_articles_no_use = self.loading_all_articles_with_not_use()
+
+        # # Добавляем статьи в list widget no use
+        self.insert_articles_to_widget_no_use(list_of_articles_no_use)
         
+        self.ui.list_wodget_use_articles.clear()
+
+        # # Получение всех журналов
+        # all_journals = self.get_all_journals_from_db()
+
+        # # Загрузка журналовв list_widget
+        # self.loading_journasl_to_list_widget_page_journals(all_journals)
+
+        # # 
+        # self.list_wodget_use_articles.clear()
+
+
+
+        # # Не выбранные статьи
+        # print("Не выбранные статьи : ")
+        # # Получаем количество элементов в QListWidget
+        # item_count = self.ui.list_wodget_no_use_articles.count()
+        # # Проходим по всем элементам
+        # for index in range(item_count):
+        #     item = self.ui.list_wodget_no_use_articles.item(index)  # Получаем элемент по индексу
+        #     if item is not None:
+        #         article_name = item.text()  # Получаем текст элемента
+        #         print(article_name)  # Выводим имя статьи
 
     # Получаем все статьи которые ещё не исопльзуются 
     def loading_all_articles_with_not_use(self):
@@ -1234,58 +1300,327 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ui.list_wodget_no_use_articles.setItemWidget(return_item, return_widget)
 
     def add_journals_to_db(self, name, data, number):
-        pass
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = """INSERT INTO Journals (name, date_create, number_journal) VALUES (%s, %s, %s);"""
+
+                cursor.execute(query, (name, data, number,))
+
+                print("Журнал добавлен")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
     
-    def get_all_journals_from_db(self):
-        pass
+    def get_all_journals_from_db(self, param=None, value=None):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
 
-    def loading_journasl_to_list_widget_page_journals(self, list_journals)
-        pass
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+                
+                if param and value:
+                    query = f"""SELECT * FROM Journals WHERE {param} = %s;"""
+                    cursor.execute(query, (value,))
+                else:
+                    cursor.execute(""" SELECT * FROM Journals; """)
+                
+                items = cursor.fetchall()
 
-    # def insert_articles_to_widget_no_use(self, list_articles):
-
-    #     # Очищаем list widget no use
-    #     self.ui.list_wodget_no_use_articles.clear()
-
-
-    #     # Добавляем элементы в list widget no use
-    #     for article in list_articles:
-    #         item = QListWidgetItem()
-    #         item_widget = QWidget()
-    #         separator_name = QLabel()
-    #         name_article = QLabel(str(article[1]))
-
-    #         add_push_button = QPushButton("+")
- 
-    #         add_push_button.setObjectName(str(article[0])) # Именем кнопки для перноса элемента в другой list widget use
-
-    #         # Передаем текущий item в качестве аргумента в метод
-    #         add_push_button.clicked.connect(lambda checked, item=item: self.add_article_push_button(item))
-
-    #         # add_push_button.clicked.connect(self.add_article_push_button)
-
-    #         item_layout = QHBoxLayout()
-    #         item_layout.addWidget(name_article)
-    #         item_layout.addWidget(separator_name)
-    #         item_layout.addWidget(add_push_button)
-
-    #         item_widget.setLayout(item_layout)
-
-    #         item.setSizeHint(item_widget.sizeHint())
-    #         self.ui.list_wodget_no_use_articles.addItem(item)
-    #         self.ui.list_wodget_no_use_articles.setItemWidget(item, item_widget)
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
         
-    # def add_article_push_button(self, item):  
-    #     # Удаляем элемент из list widget no use
-    #     row = self.ui.list_wodget_no_use_articles.row(item)
+        return items
 
-    #     if row != -1:
-    #         self.ui.list_wodget_no_use_articles.takeItem(row)
+    def loading_journasl_to_list_widget_page_journals(self, list_journals):
+        self.ui.list_widget_journals.clear()
+
+        print("all_journals")
+        print(list_journals)
+
+        for journal in list_journals:
+            item = QListWidgetItem()
+            item_widget = QWidget()
+            name_journal = QLabel(str(journal[1]))
+            separator_name = QLabel()
+            date_journal = QLabel(str(journal[2]))
+            separator_date = QLabel()
+            number_journal = QLabel(str(journal[3]))
+            separator_button = QLabel()
+
+            delete_push_button = QPushButton("Удалить")
+            view_push_button = QPushButton("Смотреть")
+
+            delete_push_button.setObjectName(str(journal[0]))  # Именем кнопки для удаления будет являться id журнала
+            view_push_button.setObjectName(str(journal[0]))  # Именем кнопки для просмотра будет являться id журнала
+
+            delete_push_button.clicked.connect(self.delete_journal_push_button)
+            view_push_button.clicked.connect(self.view_journal_push_button)
+
+            item_layout = QHBoxLayout()
+            item_layout.addWidget(name_journal)
+            item_layout.addWidget(separator_name)
+            item_layout.addWidget(date_journal)
+            item_layout.addWidget(separator_date)
+            item_layout.addWidget(number_journal)
+            item_layout.addWidget(separator_button)
+            item_layout.addWidget(delete_push_button)
+            item_layout.addWidget(view_push_button)
+            item_widget.setLayout(item_layout)
+
+            item.setSizeHint(item_widget.sizeHint())
+            self.ui.list_widget_journals.addItem(item)
+            self.ui.list_widget_journals.setItemWidget(item, item_widget)
+    
+    def connect_article_with_journal(self, id_journal, list_id_articles):
+
+        for id_article in list_id_articles:
+            onnection = None
+            cursor = None
+            try:
+                connection = connect(
+                    host="sql7.freesqldatabase.com",
+                    user="sql7751998",
+                    password="7kPDaYU2TX",
+                    database="sql7751998" # Имя базы данных
+                )
+
+                if connection.is_connected():
+                    print("Успешное подключение")
+                    cursor = connection.cursor()
+
+                    query = """INSERT INTO Articles_Journals (ID_Journal, ID_Article) VALUES (%s, %s);"""
+
+                    cursor.execute(query, (id_journal, id_article,))
+
+                    # print(f"Статья {id_article} соединена с {id_journal}")
+
+            except Error as e:
+                print(f"Ошибка подключения: {e}")
+            finally:
+                if cursor:
+                    cursor.close()
+                if connection:
+                    connection.commit()
+                    connection.close()
+
+    def get_id_journal(self, name, date_create, number_journal):
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = """SELECT ID_journal FROM Journals WHERE name = %s AND date_create = %s AND  number_journal = %s;"""
+
+                cursor.execute(query, (name, date_create, number_journal,))
+                
+                id_journal = cursor.fetchone()
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return id_journal
+
+    def get_id_articles(self, list_name_articles):
+        
+        list_id_articles = []
+
+        for name_article in list_name_articles:
+            onnection = None
+            cursor = None
+            try:
+                connection = connect(
+                    host="sql7.freesqldatabase.com",
+                    user="sql7751998",
+                    password="7kPDaYU2TX",
+                    database="sql7751998" # Имя базы данных
+                )
+
+                if connection.is_connected():
+                    print("Успешное подключение")
+                    cursor = connection.cursor()
+
+                    query = """SELECT ID_Article FROM Articles WHERE name = %s;"""
+
+                    cursor.execute(query, (name_article,))
+                
+                    id_article = cursor.fetchone()
+                    id_article = id_article[0] 
+
+                    list_id_articles.append(id_article)
+
+            except Error as e:
+                print(f"Ошибка подключения: {e}")
+            finally:
+                if cursor:
+                    cursor.close()
+                if connection:
+                    # connection.commit()
+                    connection.close()
+        
+        return list_id_articles
+
+    def change_status_articles(self, list_id_articles):
+        
+        for id_article in list_id_articles:
+            onnection = None
+            cursor = None
+            try:
+                connection = connect(
+                    host="sql7.freesqldatabase.com",
+                    user="sql7751998",
+                    password="7kPDaYU2TX",
+                    database="sql7751998" # Имя базы данных
+                )
+
+                if connection.is_connected():
+                    print("Успешное подключение")
+                    cursor = connection.cursor()
+
+                    query = """UPDATE Articles SET isUse = 1 WHERE ID_Article = %s"""
+
+                    cursor.execute(query, (id_article,))
 
 
+            except Error as e:
+                print(f"Ошибка подключения: {e}")
+            finally:
+                if cursor:
+                    cursor.close()
+                if connection:
+                    connection.commit()
+                    connection.close()
+
+    def search_journals_with_param(self):
+        pass
+
+    def delete_journal_push_button(self):
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+
+                
+                query = """SELECT ID_Article FROM Articles_Journals WHERE ID_Journal = %s"""
+                cursor.execute(query, (sender.objectName(),))
+                id_articles = cursor.fetchall()
+                print(id_articles)
+
+                list_id_articles = []
+
+                for el in id_articles:
+                    list_id_articles.append(el[0])
+
+                print(list_id_articles)
+
+                # return
+
+                query = """DELETE FROM Journals WHERE ID_journal = %s"""
+                cursor.execute(query, (sender.objectName(),))
+
+                for el in list_id_articles:
+                    query = """UPDATE Articles SET isUse = 0 WHERE ID_Article = %s"""
+                    cursor.execute(query, (el,))
+
+                print("Журнал удалён.")
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        # # Получение всех журналов
+        # all_journals = self.get_all_journals_from_db()
+        # print(1)
+
+        # # Загрузка журналовв list_widget
+        # self.loading_journasl_to_list_widget_page_journals(all_journals)
+
+        # Получение всех журналов
+        all_journals = self.get_all_journals_from_db()
+
+        # Загрузка журналов list_widget
+        self.loading_journasl_to_list_widget_page_journals(all_journals)
+
+        # # Получаем список статей который не испольузются
+        list_of_articles_no_use = self.loading_all_articles_with_not_use()
+
+        # # Добавляем статьи в list widget no use
+        self.insert_articles_to_widget_no_use(list_of_articles_no_use)
+        
+        self.ui.list_wodget_use_articles.clear()
+
+    def view_journal_push_button(self):
+        pass
 
 
 #///////////////////////////////////////
+    def create_report(self):
+        pass
+
     # Создание БД
     def create_db(self):
         connection = None
@@ -1993,8 +2328,6 @@ class EditArticleWidget(QWidget, Ui_Form_Article):
                                 return False
                     return True
         return False
-
-
 
 if __name__ == "__main__":
 
