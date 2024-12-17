@@ -1736,6 +1736,34 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             page.paragraphs.add(text)
             count += 1
 
+        page.paragraphs.add(sep_text)
+        text = ap.text.TextFragment("Статьи")
+        page.paragraphs.add(text)
+
+        page.paragraphs.add(sep_text)
+        page.paragraphs.add(sep_text)
+        page.paragraphs.add(sep_text)
+        
+        for el in all_info_about_articles_of_journal_with_id:
+            name = ap.text.TextFragment(f"Статья - {el[4]}")
+            page.paragraphs.add(name)
+
+            author = ap.text.TextFragment(f"Автор - {str(el[1]) + " " + str(el[2])}")
+            page.paragraphs.add(author)
+
+            date = ap.text.TextFragment(f"Дата - {str(el[5])}")
+            page.paragraphs.add(date)
+
+            science = ap.text.TextFragment(f"Наука - {str(el[6])}")
+            page.paragraphs.add(science)
+
+            text = ap.text.TextFragment(f"{el[7]}")
+            page.paragraphs.add(text)
+
+            page.paragraphs.add(sep_text)
+            page.paragraphs.add(sep_text)
+            page.paragraphs.add(sep_text)
+
         document.save(f"journal_{sender.objectName()}.pdf")
 
 #///////////////////////////////////////
