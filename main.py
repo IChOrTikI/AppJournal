@@ -1763,8 +1763,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             page.paragraphs.add(sep_text)
             page.paragraphs.add(sep_text)
             page.paragraphs.add(sep_text)
+        
+                # Получаем путь к директории, где находится текущий скрипт
+        project_path = os.path.dirname(os.path.abspath(sys.modules['__main__'].__file__))
 
-        document.save(f"journal_{sender.objectName()}.pdf")
+        # Указываем имя файла .docx
+        file_name = f'article_{push_button.objectName()}.pdf'  # Замените на имя вашего файла
+
+        # Полный путь к файлу
+        file_path = os.path.join(project_path, file_name)
+
+        # Сохраняем документ (перезаписывает, если файл уже существует)
+        document.save(file_path)
+
+        # Открываем файл в Microsoft Word
+        os.startfile(file_path)
+
+        # document.save(f"journal_{sender.objectName()}.pdf")
 
 #///////////////////////////////////////
     def create_report(self):
