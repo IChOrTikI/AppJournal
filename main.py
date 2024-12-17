@@ -1803,8 +1803,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 # Создание БД если её нет
                 # cursor.execute(""" CREATE DATABASE IF NOT EXISTS AppJournal; """)
-                
-                cursor.execute("""
+
+                # Запрос 1 //////
+                # cursor.execute("""
+                #     CREATE TABLE IF NOT EXISTS Authors (
+                #         ID_Author INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                #         first_name VARCHAR(150) NOT NULL,
+                #         last_name VARCHAR(150) NOT NULL,
+                #         middle_name VARCHAR(150) NOT NULL,
+                #         info TEXT NOT NULL,
+                #         count_articles INT NOT NULL DEFAULT 0
+                #     );
+                # """)
+
+                query = """
                     CREATE TABLE IF NOT EXISTS Authors (
                         ID_Author INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                         first_name VARCHAR(150) NOT NULL,
@@ -1813,7 +1825,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         info TEXT NOT NULL,
                         count_articles INT NOT NULL DEFAULT 0
                     );
-                """)
+                """
+                cursor.execute(query)
+                self.write_sql(query)
+                
+                
+            
 
 
                 cursor.execute("""
@@ -1941,6 +1958,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 cursor.close()
             if connection:
                 connection.close()
+
+    # Запись запросов в файл 
+    def write_sql(self, query):
+        # Открываем файл для записи
+        with open('data.sql', 'a') as file:
+            formatted_query = "\n".join(line.strip() for line in query.strip().splitlines())
+            # Разделение пустой строкой
+            file.write("\n")
+            file.write("\n")
+
+            # Записываем запрос в файл
+            file.write(formatted_query)
+
 
 class EditAuthorWindow(QtWidgets.QMainWindow, Ui_EditAuthorWindow):
     def __init__(self, id_author):
