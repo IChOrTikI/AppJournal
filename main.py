@@ -6,6 +6,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import QThread
 
 from docx import Document
+import aspose.pdf as ap
 
 from MainWindow import Ui_MainWindow
 from EditAuthorWindow import Ui_EditAuthorWindow
@@ -472,7 +473,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.loading_authors_from_the_database_to_page(info)
     
 #////////////////////
-
     # Метод для поиска статей по параметрам
     def search_articles_with_param(self):
         
@@ -1613,7 +1613,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     cursor.execute(query, (el,))
 
                 print("Журнал удалён.")
-
         except Error as e:
             print(f"Ошибка подключения: {e}")
         finally:
@@ -1644,8 +1643,100 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.ui.list_wodget_use_articles.clear()
 
+    def get_all_info_about_journal_wtih_param(self, id_journal):
+        #////////////////////////
+        # Все запросы записать в файд sql
+        #////////////////////////
+        onnection = None
+        cursor = None
+        try:
+            connection = connect(
+                host="sql7.freesqldatabase.com",
+                user="sql7751998",
+                password="7kPDaYU2TX",
+                database="sql7751998" # Имя базы данных
+            )
+
+            if connection.is_connected():
+                print("Успешное подключение")
+                cursor = connection.cursor()
+
+                query = f"""
+                        SELECT
+	                        Authors.ID_Author,
+	                        Authors.first_name,
+	                        Authors.last_name,
+	                        Articles.ID_Article,
+	                        Articles.name,
+	                        Articles.date_create,
+	                        Articles.science,
+	                        Articles.text_article,
+                            Journals.name
+                        FROM
+	                        Articles
+                        INNER JOIN
+	                        Authors_Articles ON Articles.ID_Article = Authors_Articles.ID_Article
+                        INNER JOIN
+	                        Authors ON Authors_Articles.ID_Author = Authors.ID_Author
+                        INNER JOIN
+	                        Articles_Journals ON Articles.ID_Article = Articles_Journals.ID_Article
+                        INNER JOIN
+	                        Journals ON Journals.ID_Journal = Articles_Journals.ID_Journal
+                        WHERE
+	                        Journals.ID_Journal = %s; 
+                        """
+                cursor.execute(query, (id_journal,))
+
+                items = cursor.fetchall()
+
+        except Error as e:
+            print(f"Ошибка подключения: {e}")
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.commit()
+                connection.close()
+        
+        return items
+   
     def view_journal_push_button(self):
-        pass
+        sender = self.sender()
+        push_button = self.findChild(QPushButton, sender.objectName())
+
+        all_info_about_articles_of_journal_with_id = self.get_all_info_about_journal_wtih_param(sender.objectName())
+
+        # if all_info_about_articles_of_journal_with_id:
+        #     QMessageBox.warning(self, "Сообщение", "Данный журнал состоит из статей")
+        #     return
+
+        # Проверка, имеет ли журнал статьи
+        if not all_info_about_articles_of_journal_with_id:
+            QMessageBox.warning(self, "Сообщение", "У данного журнала нет статей")
+            return
+
+        print(all_info_about_articles_of_journal_with_id)
+
+        document = ap.Document()
+        page = document.pages.add()
+        
+        header_text = ap.text.TextFragment(f"Выпуск \"{all_info_about_articles_of_journal_with_id[0][8]}\"")
+        page.paragraphs.add(header_text)
+
+        sep_text = ap.text.TextFragment(" ")
+        page.paragraphs.add(sep_text)
+
+
+        text = ap.text.TextFragment("Статьи, которые входят в журнал:")
+        page.paragraphs.add(text)
+        count = 1
+
+        for el in all_info_about_articles_of_journal_with_id:
+            text = ap.text.TextFragment(f"   {count} : " + str(el[1]) + " " + str(el[2]) + " - \"" + str(el[4]) + "\"")
+            page.paragraphs.add(text)
+            count += 1
+
+        document.save(f"journal_{sender.objectName()}.pdf")
 
 #///////////////////////////////////////
     def create_report(self):
@@ -2375,4 +2466,3 @@ if __name__ == "__main__":
     # window = EditArticleWindow()
     # window.show()
     # sys.exit(app.exec_())
-
