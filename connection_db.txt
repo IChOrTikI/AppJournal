@@ -1,0 +1,4 @@
+host=sql7.freesqldatabase.com
+user=sql7753735
+password=8a8kJ57nI8
+database=sql7753735
